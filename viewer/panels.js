@@ -362,4 +362,66 @@
         renderTablePanel(trace, t, runningInfo);
     };
 
+    /* ── renderMetrics (public API) ────────────────────────────
+     * Called by app.js render() after renderPanels.
+     * Fills #panel-metrics with 6 metric cards + a summary line.
+     */
+    window.SCHED.renderMetrics = function(trace, t) {
+        var panel = document.getElementById('panel-metrics');
+        var h2 = panel.querySelector('h2');
+        while (panel.lastChild && panel.lastChild !== h2) panel.removeChild(panel.lastChild);
+        if (!trace || !trace.metrics) return;
+        var m = trace.metrics;
+
+        /* 6 metric cards */
+        var cards = [
+            { key: 'avg_waiting',    label: 'Avg Waiting',    unit: 'ms',      formula: 'turnaround − burst', value: m.avg_waiting.toFixed(2) },
+            { key: 'avg_turnaround', label: 'Avg Turnaround', unit: 'ms',      formula: 'completion − arrival', value: m.avg_turnaround.toFixed(2) },
+            { key: 'avg_response',   label: 'Avg Response',   unit: 'ms',      formula: 'first run − arrival', value: m.avg_response.toFixed(2) },
+            { key: 'cpu_utilization',label: 'CPU Utilization',unit: '%',       formula: 'run ticks / total × 100', value: m.cpu_utilization.toFixed(2) },
+            { key: 'throughput',     label: 'Throughput',     unit: 'jobs/ms', formula: 'n / total time', value: m.throughput.toFixed(2) },
+            { key: 'context_switches',label:'Context Switches',unit:'',        formula: 'count of preemptions', value: m.context_switches }
+        ];
+
+        var grid = document.createElement('div');
+        grid.className = 'metrics-grid';
+
+        cards.forEach(function(c) {
+            var card = document.createElement('div');
+            card.className = 'metrics-card';
+
+            var num = document.createElement('div');
+            num.className = 'metrics-value';
+            num.textContent = c.value + (c.unit ? ' ' + c.unit : '');
+
+            var lbl = document.createElement('div');
+            lbl.className = 'metrics-label';
+            lbl.textContent = c.label;
+
+            var fml = document.createElement('div');
+            fml.className = 'metrics-formula';
+            fml.textContent = c.formula;
+
+            card.appendChild(num);
+            card.appendChild(lbl);
+            card.appendChild(fml);
+            grid.appendChild(card);
+        });
+
+        panel.appendChild(grid);
+
+        /* Gantt summary line */
+        var tl = trace.timeline || [];
+        var totalTime = tl.length > 0 ? tl[tl.length-1].t_end : 0;
+        var idleTime = 0, csTime = 0;
+        tl.forEach(function(seg) {
+            if (seg.type === 'idle') idleTime += seg.t_end - seg.t_start;
+            if (seg.type === 'context_switch') csTime += seg.t_end - seg.t_start;
+        });
+        var summary = document.createElement('div');
+        summary.className = 'metrics-summary';
+        summary.textContent = 'Total: ' + totalTime + ' ms  |  Idle: ' + idleTime + ' ms  |  Context switch overhead: ' + csTime + ' ms';
+        panel.appendChild(summary);
+    };
+
 })();

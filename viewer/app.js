@@ -361,6 +361,11 @@ function render() {
     if (window.SCHED.renderPanels) {
         window.SCHED.renderPanels(trace, state.t);
     }
+
+    /* ── Metrics panel ──────────────────────────────────────── */
+    if (window.SCHED.renderMetrics) {
+        window.SCHED.renderMetrics(trace, state.t);
+    }
 }
 
 /* ── showToast ──────────────────────────────────────────────── */

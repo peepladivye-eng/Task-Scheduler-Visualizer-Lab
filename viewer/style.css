@@ -259,3 +259,43 @@ body.drag-over::after {
     padding: 12px;
   }
 }
+
+/* ── Metrics grid ─── */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+}
+@media (max-width: 900px) { .metrics-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .metrics-grid { grid-template-columns: 1fr; } }
+.metrics-card {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.metrics-value {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+}
+.metrics-label {
+    font-size: 0.78rem;
+    color: var(--text);
+    font-weight: 500;
+}
+.metrics-formula {
+    font-size: 0.7rem;
+    color: var(--muted);
+}
+.metrics-summary {
+    font-size: 0.78rem;
+    color: var(--muted);
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+}
