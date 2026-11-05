@@ -46,10 +46,23 @@ document.addEventListener('DOMContentLoaded', function() {
         fileInput.value = '';
     });
 
-    /* Sample select — disabled until samples.js populates it (Task later) */
-    sampleSelect.addEventListener('change', function() {
-        /* no-op for now */
-    });
+    /* Sample select — populate from window.SCHED_SAMPLES (written by gen-samples.js) */
+    if (window.SCHED_SAMPLES && window.SCHED_SAMPLES.length > 0) {
+        sampleSelect.disabled = false;
+        window.SCHED_SAMPLES.forEach(function(s) {
+            var opt = document.createElement('option');
+            opt.value = s.name;
+            opt.textContent = s.label;
+            sampleSelect.appendChild(opt);
+        });
+        sampleSelect.addEventListener('change', function() {
+            var name   = sampleSelect.value;
+            var sample = window.SCHED_SAMPLES.find(function(s) { return s.name === name; });
+            if (sample) loadTrace(sample.trace);
+        });
+        /* Auto-load first sample so the viewer isn't blank on open */
+        loadTrace(window.SCHED_SAMPLES[0].trace);
+    }
 
     /* ── Drag-and-drop anywhere on the page ─────────────────── */
     document.addEventListener('dragover', function(e) {
@@ -151,13 +164,17 @@ function render() {
     badge.style.display = 'inline-block';
 
     /* ── Gantt panel ────────────────────────────────────────── */
-    /* Will be replaced by gantt.js in Task 9 */
     var ganttEl = document.getElementById('gantt');
-    ganttEl.innerHTML = '<div class="empty-state">Gantt chart coming in Task 9</div>';
+    if (window.SCHED.renderGantt) {
+        window.SCHED.renderGantt(ganttEl, trace, state.t);
+    }
 
     /* ── Controls ───────────────────────────────────────────── */
-    /* Enable once a trace is loaded; full wiring in later tasks */
-    var totalTime = (trace.metrics && trace.metrics.total_time) || 0;
+    /* Compute total_time from the last timeline segment (metrics may omit it) */
+    var totalTime = 0;
+    if (trace.timeline && trace.timeline.length > 0) {
+        totalTime = trace.timeline[trace.timeline.length - 1].t_end;
+    }
     var slider = document.getElementById('slider');
     slider.max   = totalTime;
     slider.value = state.t;
