@@ -20,6 +20,8 @@ window.SCHED = {
 /* ── Application state ─────────────────────────────────────── */
 var state = {
     trace:        null,  /* currently loaded trace object (single-run) */
+    compareObj:   null,  /* full compare object when a compare file is loaded */
+    activeTab:    0,     /* 0-5 = algo index, 6 = compare view */
     t:            0,     /* current playback tick */
     playing:      false, /* whether the animation is running */
     playInterval: null   /* setInterval handle for playback */
@@ -302,14 +304,17 @@ function loadTrace(obj) {
             showToast('Compare file has no runs', 'error');
             return;
         }
-        state.trace = obj.runs[0];
-        showToast('Compare file: showing FCFS (compare view comes later)', 'info');
+        state.compareObj = obj;
+        state.activeTab  = 0;          /* default to first algo tab */
+        state.trace      = obj.runs[0]; /* FCFS as the single-run view */
     } else {
         if (!Array.isArray(obj.timeline) || !Array.isArray(obj.processes)) {
             showToast('Not a valid trace file', 'error');
             return;
         }
-        state.trace = obj;
+        state.compareObj = null;
+        state.activeTab  = 0;
+        state.trace      = obj;
     }
 
     /* Always reset to t=0 when loading a new trace */
@@ -322,24 +327,79 @@ function render() {
     var trace = state.trace;
     if (!trace) return;
 
-    var total = totalTime();
+    /* ── Tab bar (compare mode) ─────────────────────────────── */
+    var tabBar = document.getElementById('tab-bar');
+    if (state.compareObj) {
+        /* Build or rebuild tab bar */
+        if (!tabBar) {
+            tabBar = document.createElement('div');
+            tabBar.id = 'tab-bar';
+            /* Insert before .main-area */
+            var mainArea = document.querySelector('.main-area');
+            if (mainArea) mainArea.parentNode.insertBefore(tabBar, mainArea);
+        }
+        tabBar.innerHTML = '';
+        var TAB_LABELS = ['FCFS','SJF','SRTF','Priority','Priority-P','RR','Compare'];
+        TAB_LABELS.forEach(function(lbl, idx) {
+            var btn = document.createElement('button');
+            btn.className = 'tab-btn' + (state.activeTab === idx ? ' tab-active' : '');
+            btn.textContent = lbl;
+            btn.addEventListener('click', function() {
+                state.activeTab = idx;
+                /* Update the active single trace */
+                if (idx < 6) {
+                    state.trace = state.compareObj.runs[idx];
+                    state.t = 0;
+                }
+                render();
+            });
+            tabBar.appendChild(btn);
+        });
+        tabBar.style.display = 'flex';
+    } else {
+        /* Hide tab bar for single-run traces */
+        if (tabBar) tabBar.style.display = 'none';
+    }
+
+    /* ── Compare view ───────────────────────────────────────── */
+    var ganttEl = document.getElementById('gantt');
+    if (state.compareObj && state.activeTab === 6) {
+        /* Replace gantt content with compare charts */
+        if (window.SCHED.renderCompare) {
+            window.SCHED.renderCompare(ganttEl, state.compareObj);
+        }
+        /* Hide panels below; update badge */
+        var badge = document.getElementById('algo-badge');
+        badge.textContent = 'COMPARE';
+        badge.style.display = 'inline-block';
+        return;  /* skip panels/metrics for compare tab */
+    }
+
+    /* Pick trace: in compare mode use the selected run, else state.trace */
+    var activeTrace = (state.compareObj && state.activeTab < 6)
+        ? state.compareObj.runs[state.activeTab]
+        : trace;
+
+    var total = (function() {
+        if (!activeTrace || !activeTrace.timeline || activeTrace.timeline.length === 0) return 0;
+        return activeTrace.timeline[activeTrace.timeline.length - 1].t_end;
+    })();
 
     /* ── Algo badge ─────────────────────────────────────────── */
     var badge = document.getElementById('algo-badge');
-    var label = (trace.algo || '').toUpperCase();
-    if (trace.algo === 'rr' && trace.quantum) {
-        label += ' q=' + trace.quantum;
+    var label = (activeTrace.algo || '').toUpperCase();
+    if (activeTrace.algo === 'rr' && activeTrace.quantum) {
+        label += ' q=' + activeTrace.quantum;
     }
-    if (trace.context_switch_cost > 0) {
-        label += ' cs=' + trace.context_switch_cost;
+    if (activeTrace.context_switch_cost > 0) {
+        label += ' cs=' + activeTrace.context_switch_cost;
     }
     badge.textContent = label;
     badge.style.display = 'inline-block';
 
     /* ── Gantt panel ────────────────────────────────────────── */
-    var ganttEl = document.getElementById('gantt');
     if (window.SCHED.renderGantt) {
-        window.SCHED.renderGantt(ganttEl, trace, state.t);
+        window.SCHED.renderGantt(ganttEl, activeTrace, state.t);
     }
 
     /* ── Controls ───────────────────────────────────────────── */
@@ -357,14 +417,14 @@ function render() {
     document.getElementById('time-readout').textContent =
         't = ' + state.t + ' / ' + total + ' ms';
 
-    /* ── Panels (wired in later tasks) ──────────────────────── */
+    /* ── Panels ─────────────────────────────────────────────── */
     if (window.SCHED.renderPanels) {
-        window.SCHED.renderPanels(trace, state.t);
+        window.SCHED.renderPanels(activeTrace, state.t);
     }
 
     /* ── Metrics panel ──────────────────────────────────────── */
     if (window.SCHED.renderMetrics) {
-        window.SCHED.renderMetrics(trace, state.t);
+        window.SCHED.renderMetrics(activeTrace, state.t);
     }
 }
 

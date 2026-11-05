@@ -299,3 +299,25 @@ body.drag-over::after {
     padding-top: 4px;
     border-top: 1px solid var(--border);
 }
+
+/* ── Compare view ── */
+#tab-bar { display:flex; gap:6px; padding:10px 24px; background:var(--surface-2); border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.tab-btn { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:5px 12px; font-size:0.82rem; cursor:pointer; color:var(--muted); transition:all 0.15s; }
+.tab-btn:hover { border-color:var(--accent); color:var(--accent); }
+.tab-btn.tab-active { background:var(--accent); color:#0b0f17; border-color:var(--accent); font-weight:600; }
+.compare-charts { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; margin-bottom:16px; }
+@media(max-width:700px){ .compare-charts{grid-template-columns:1fr;} }
+.compare-chart { background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:14px; }
+.compare-chart-title { font-size:0.78rem; color:var(--muted); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.06em; }
+.compare-bars { display:flex; align-items:flex-end; gap:6px; height:100px; }
+.compare-bar-wrap { display:flex; flex-direction:column; align-items:center; flex:1; gap:3px; position:relative; }
+.compare-bar-wrap.compare-best .compare-bar-outer { outline:2px solid var(--good); outline-offset:1px; border-radius:3px; }
+.compare-bar-outer { width:100%; flex:1; display:flex; align-items:flex-end; background:var(--surface); border-radius:3px; overflow:hidden; }
+.compare-bar-inner { width:100%; border-radius:3px 3px 0 0; min-height:2px; }
+.compare-bar-value { font-family:"JetBrains Mono",Consolas,monospace; font-size:0.7rem; color:var(--text); }
+.compare-bar-algo { font-size:0.68rem; color:var(--muted); }
+.compare-best-tag { font-size:0.6rem; color:var(--good); font-weight:700; position:absolute; top:-14px; }
+.compare-table-wrap { overflow-x:auto; }
+.compare-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+.compare-table th { padding:6px 10px; color:var(--muted); font-weight:500; border-bottom:1px solid var(--border); text-align:left; white-space:nowrap; }
+.compare-table td { padding:5px 10px; border-bottom:1px solid rgba(38,49,73,0.4); }
