@@ -225,8 +225,30 @@ int simulate(const SimConfig *cfg, const Process *procs, int n,
         /* ── STEP 2: if cs_left == 0 ── */
         if (cs_left == 0) {
 
-            /* ── 2a. PREEMPT HOOK (srtf, priority-p only) ── */
-            /* PREEMPT HOOK - task 10/11 */
+            /* ── 2a. PREEMPT HOOK (srtf only for now; priority-p added in task 11) ── */
+            if (running != -1) {
+                if (cfg->algo == ALGO_SRTF) {
+                    /* Find best ready process; preempt if strictly smaller remaining */
+                    int best_idx = pick_best(cfg, out->procs, &ready);
+                    if (best_idx >= 0) {
+                        int cand = ready.arr[best_idx];
+                        if (out->procs[cand].remaining < out->procs[running].remaining) {
+                            /* Preempt: push running back to queue, emit preempt event */
+                            if (queue_push(&ready, running) != 0) {
+                                snprintf(err, errlen, "out of memory");
+                                free(ready.arr);
+                                return 1;
+                            }
+                            if (push_event(out, &ev_cap, t, EV_PREEMPT, out->procs[running].pid, &ready) != 0) {
+                                snprintf(err, errlen, "out of memory");
+                                free(ready.arr);
+                                return 1;
+                            }
+                            running = -1;
+                        }
+                    }
+                }
+            }
 
             /* ── 2b. RR EXPIRY (rr only) ── */
             /* RR EXPIRY - task 14 */
