@@ -189,6 +189,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    /* Shortcuts popover */
+    var shortcutsBtn = document.createElement('button');
+    shortcutsBtn.textContent = '?';
+    shortcutsBtn.title = 'Keyboard shortcuts';
+    shortcutsBtn.setAttribute('aria-label', 'Show keyboard shortcuts');
+    shortcutsBtn.style.minWidth = '28px';
+    shortcutsBtn.style.padding = '4px 8px';
+
+    var popover = document.createElement('div');
+    popover.id = 'shortcuts-popover';
+    popover.style.cssText = 'display:none;position:fixed;bottom:80px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 16px;z-index:200;font-size:0.82rem;line-height:1.8;white-space:pre;color:var(--text);font-family:"JetBrains Mono",Consolas,monospace;box-shadow:0 4px 20px rgba(0,0,0,0.4)';
+    popover.textContent = 'Space    Play / Pause\n←  →     Step back / forward\nHome     Jump to start\nEnd      Jump to end';
+    document.body.appendChild(popover);
+
+    shortcutsBtn.addEventListener('click', function() {
+        popover.style.display = popover.style.display === 'none' ? 'block' : 'none';
+    });
+    document.addEventListener('click', function(e) {
+        if (e.target !== shortcutsBtn && !popover.contains(e.target)) {
+            popover.style.display = 'none';
+        }
+    });
+
+    var controls = document.getElementById('controls');
+    if (controls) controls.appendChild(shortcutsBtn);
+
     /* ── Drag-and-drop anywhere on the page ──────────────── */
     document.addEventListener('dragover', function(e) {
         e.preventDefault();

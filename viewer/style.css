@@ -341,3 +341,8 @@ body.drag-over::after {
 .editor-btn-primary:hover { opacity:0.9; }
 .editor-del { background:none; border:none; color:var(--bad); cursor:pointer; font-size:1rem; padding:0 4px; }
 .editor-hint { margin-top:10px; padding:8px 12px; background:rgba(255,107,107,0.1); border:1px solid var(--bad); border-radius:6px; font-size:0.8rem; color:var(--bad); }
+
+/* ── Task 19 polish ── */
+.gantt-svg rect { transition: opacity 0.15s ease; }
+.panels-row { animation: panelFadeIn 0.3s ease both; }
+@keyframes panelFadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }

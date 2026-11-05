@@ -151,6 +151,7 @@
             xmlns:   NS,
             style:   'display:block; font-family: "JetBrains Mono", Consolas, monospace;'
         });
+        svg.setAttribute('class', 'gantt-svg');
 
         buildDefs(svg);
 
@@ -185,6 +186,11 @@
             });
             rect.setAttribute('title', segTitle(seg));
             svg.appendChild(rect);
+
+            /* Glow on the currently active run segment */
+            if (seg.type === 'run' && seg.t_start <= tClamped && tClamped < seg.t_end) {
+                rect.setAttribute('filter', 'drop-shadow(0 0 4px ' + window.SCHED.pidColor(seg.pid) + ')');
+            }
 
             /* For future segments, draw a subtle stroke outline so the shape is
              * still recognisable even at 0.15 opacity. */
