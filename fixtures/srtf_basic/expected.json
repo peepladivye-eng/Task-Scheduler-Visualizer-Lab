@@ -1,0 +1,4 @@
+{"args":["--algo","srtf"],
+ "timeline":[[0,2,"run",1],[2,4,"run",2],[4,5,"run",3],[5,7,"run",2],[7,11,"run",4],[11,16,"run",1]],
+ "processes":{"1":{"start":0,"completion":16,"waiting":9,"turnaround":16,"response":0},"2":{"start":2,"completion":7,"waiting":1,"turnaround":5,"response":0},"3":{"start":4,"completion":5,"waiting":0,"turnaround":1,"response":0},"4":{"start":7,"completion":11,"waiting":2,"turnaround":6,"response":2}},
+ "metrics":{"avg_waiting":3.00,"avg_turnaround":7.00,"avg_response":0.50,"cpu_utilization":100.00,"throughput":0.25,"context_switches":5}}

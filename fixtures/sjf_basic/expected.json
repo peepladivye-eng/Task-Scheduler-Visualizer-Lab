@@ -1,0 +1,4 @@
+{"args":["--algo","sjf"],
+ "timeline":[[0,7,"run",1],[7,8,"run",3],[8,12,"run",2],[12,16,"run",4]],
+ "processes":{"1":{"start":0,"completion":7,"waiting":0,"turnaround":7,"response":0},"2":{"start":8,"completion":12,"waiting":6,"turnaround":10,"response":6},"3":{"start":7,"completion":8,"waiting":3,"turnaround":4,"response":3},"4":{"start":12,"completion":16,"waiting":7,"turnaround":11,"response":7}},
+ "metrics":{"avg_waiting":4.00,"avg_turnaround":8.00,"avg_response":4.00,"cpu_utilization":100.00,"throughput":0.25,"context_switches":3}}

@@ -1,0 +1,4 @@
+{"args":["--algo","fcfs"],
+ "timeline":[[0,24,"run",1],[24,27,"run",2],[27,30,"run",3]],
+ "processes":{"1":{"start":0,"completion":24,"waiting":0,"turnaround":24,"response":0},"2":{"start":24,"completion":27,"waiting":24,"turnaround":27,"response":24},"3":{"start":27,"completion":30,"waiting":27,"turnaround":30,"response":27}},
+ "metrics":{"avg_waiting":17.00,"avg_turnaround":27.00,"avg_response":17.00,"cpu_utilization":100.00,"throughput":0.10,"context_switches":2}}

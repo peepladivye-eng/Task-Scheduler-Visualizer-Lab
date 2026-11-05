@@ -1,0 +1,4 @@
+{"args":["--algo","priority"],
+ "timeline":[[0,2,"idle",null],[2,5,"run",1],[5,7,"run",2],[7,10,"idle",null],[10,11,"run",3]],
+ "processes":{"1":{"start":2,"completion":5,"waiting":0,"turnaround":3,"response":0},"2":{"start":5,"completion":7,"waiting":2,"turnaround":4,"response":2},"3":{"start":10,"completion":11,"waiting":0,"turnaround":1,"response":0}},
+ "metrics":{"avg_waiting":0.67,"avg_turnaround":2.67,"avg_response":0.67,"cpu_utilization":54.55,"throughput":0.27,"context_switches":2}}
