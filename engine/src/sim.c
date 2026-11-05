@@ -225,15 +225,21 @@ int simulate(const SimConfig *cfg, const Process *procs, int n,
         /* ── STEP 2: if cs_left == 0 ── */
         if (cs_left == 0) {
 
-            /* ── 2a. PREEMPT HOOK (srtf only for now; priority-p added in task 11) ── */
+            /* ── 2a. PREEMPT HOOK (srtf and priority-p) ── */
             if (running != -1) {
-                if (cfg->algo == ALGO_SRTF) {
-                    /* Find best ready process; preempt if strictly smaller remaining */
+                if (cfg->algo == ALGO_SRTF || cfg->algo == ALGO_PRIORITY_P) {
                     int best_idx = pick_best(cfg, out->procs, &ready);
                     if (best_idx >= 0) {
                         int cand = ready.arr[best_idx];
-                        if (out->procs[cand].remaining < out->procs[running].remaining) {
-                            /* Preempt: push running back to queue, emit preempt event */
+                        int should_preempt = 0;
+                        if (cfg->algo == ALGO_SRTF) {
+                            /* Preempt only if strictly smaller remaining */
+                            should_preempt = (out->procs[cand].remaining < out->procs[running].remaining);
+                        } else {
+                            /* ALGO_PRIORITY_P: preempt only if strictly smaller priority number */
+                            should_preempt = (out->procs[cand].priority < out->procs[running].priority);
+                        }
+                        if (should_preempt) {
                             if (queue_push(&ready, running) != 0) {
                                 snprintf(err, errlen, "out of memory");
                                 free(ready.arr);
