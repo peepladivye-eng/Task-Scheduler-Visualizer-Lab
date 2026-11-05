@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Task Scheduler</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Header ───────────────────────────────────────────── -->
+  <header class="header">
+    <h1>Task Scheduler</h1>
+    <p class="subtitle">Single-core CPU scheduling simulator</p>
+  </header>
+
+  <!-- ── Toolbar ──────────────────────────────────────────── -->
+  <div class="toolbar">
+    <button id="file-btn">Load trace file</button>
+    <!-- hidden file input wired up in app.js -->
+    <input type="file" id="file-input" accept=".json" style="display:none" />
+    <select id="sample-select" disabled>
+      <option value="">— Samples —</option>
+    </select>
+    <!-- algo badge: hidden until a trace is loaded -->
+    <div id="algo-badge"></div>
+  </div>
+
+  <!-- ── Controls ─────────────────────────────────────────── -->
+  <div class="controls" id="controls">
+    <button id="btn-play"  disabled title="Play / Pause">▶ Play</button>
+    <button id="btn-back"  disabled title="Step back">◀ Step</button>
+    <button id="btn-fwd"   disabled title="Step forward">Step ▶</button>
+    <input  type="range" id="slider" min="0" max="0" value="0" disabled />
+    <span   id="time-readout" class="time-readout">t = 0</span>
+    <select id="speed-select" disabled>
+      <option value="0.5">0.5×</option>
+      <option value="1"  selected>1×</option>
+      <option value="2">2×</option>
+      <option value="4">4×</option>
+    </select>
+  </div>
+
+  <!-- ── Main area ────────────────────────────────────────── -->
+  <div class="main-area">
+
+    <!-- Gantt chart panel (full width) -->
+    <div class="panel" id="gantt-panel">
+      <h2>Gantt Chart</h2>
+      <div id="gantt">
+        <div class="empty-state">Load a trace JSON or pick a sample to begin.</div>
+      </div>
+    </div>
+
+    <!-- Three-column row: CPU · Ready queue · Process table -->
+    <div class="panels-row">
+      <div class="panel" id="panel-cpu">
+        <h2>CPU</h2>
+        <div class="empty-state">—</div>
+      </div>
+      <div class="panel" id="panel-queue">
+        <h2>Ready Queue</h2>
+        <div class="empty-state">—</div>
+      </div>
+      <div class="panel" id="panel-table">
+        <h2>Process Table</h2>
+        <div class="empty-state">—</div>
+      </div>
+    </div>
+
+    <!-- Metrics footer panel (full width) -->
+    <div class="panel" id="panel-metrics">
+      <h2>Metrics</h2>
+      <div class="empty-state">—</div>
+    </div>
+
+  </div><!-- /.main-area -->
+
+  <!-- Scripts — only app.js exists for now; others added in later tasks -->
+  <script src="app.js"></script>
+</body>
+</html>

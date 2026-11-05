@@ -1,0 +1,261 @@
+/* ── Design tokens ──────────────────────────────────────────── */
+:root {
+  --bg:        #0b0f17;
+  --surface:   #121826;
+  --surface-2: #1a2234;
+  --border:    #263149;
+  --text:      #e6ebf5;
+  --muted:     #8b97b1;
+  --accent:    #6ea8fe;
+  --good:      #3ddc97;
+  --warn:      #ffb454;
+  --bad:       #ff6b6b;
+}
+
+/* ── Reset ──────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Base ───────────────────────────────────────────────────── */
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.header {
+  padding: 16px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.header h1 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.header .subtitle {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+/* ── Toolbar ─────────────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 24px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Controls bar ────────────────────────────────────────────── */
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 24px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Main area ───────────────────────────────────────────────── */
+.main-area {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+  padding: 16px 24px;
+}
+
+/* ── Panels ──────────────────────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.panel h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+/* Three-column row: CPU | Ready queue | Process table (2×) */
+.panels-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr;
+  gap: 16px;
+}
+
+/* Process table may overflow horizontally */
+#panel-table {
+  overflow-x: auto;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+button {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: inherit;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Select dropdowns ────────────────────────────────────────── */
+select {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 28px 6px 14px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-family: inherit;
+  -webkit-appearance: none;
+  appearance: none;
+  /* chevron drawn with a data-URI SVG so no CDN needed */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b97b1' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+select:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Range slider ────────────────────────────────────────────── */
+input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+  cursor: pointer;
+  min-width: 80px;
+}
+
+input[type="range"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Time readout ────────────────────────────────────────────── */
+.time-readout {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+  min-width: 60px;
+}
+
+/* ── Algo badge ──────────────────────────────────────────────── */
+#algo-badge {
+  display: none; /* shown via JS when trace loaded */
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+
+/* ── Empty state placeholder ─────────────────────────────────── */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ── Toast notifications ─────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+  pointer-events: none;
+}
+
+.toast-error { background: var(--bad);    color: #fff; }
+.toast-info  { background: var(--accent); color: #0b0f17; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Drag-and-drop overlay ───────────────────────────────────── */
+body.drag-over::after {
+  content: 'Drop JSON file here';
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 15, 23, 0.85);
+  border: 2px dashed var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--accent);
+  z-index: 999;
+}
+
+/* ── Responsive ─────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .panels-row {
+    grid-template-columns: 1fr;
+  }
+
+  .main-area {
+    padding: 12px;
+  }
+}
