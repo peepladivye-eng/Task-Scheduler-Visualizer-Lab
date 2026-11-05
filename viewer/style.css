@@ -187,7 +187,7 @@ input[type="range"]:disabled {
   font-size: 0.85rem;
   color: var(--muted);
   white-space: nowrap;
-  min-width: 60px;
+  min-width: 130px;  /* wide enough for "t = 1000 / 10000 ms" */
 }
 
 /* ── Algo badge ──────────────────────────────────────────────── */

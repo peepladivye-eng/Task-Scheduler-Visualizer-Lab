@@ -2,6 +2,13 @@
  * Renders a Gantt chart as SVG into a container element.
  * Exposes: window.SCHED.renderGantt(container, trace, t)
  *
+ * Task 12 additions:
+ *   - Segment opacity based on playback position t:
+ *       seg.t_end <= t        → opacity 1   (past / completed)
+ *       seg.t_start <= t < t_end → opacity 1   (current segment)
+ *       seg.t_start > t       → opacity 0.15 (future)
+ *   - Playhead auto-scroll: keeps playhead visible in the container.
+ *
  * Contract design tokens used:
  *   --border  #263149   idle hatch colour
  *   --warn    #ffb454   context-switch colour
@@ -48,11 +55,9 @@
             height:         '8',
             patternTransform: 'rotate(45)'
         });
-        /* Background fill */
         idlePat.appendChild(el('rect', {
             width: '8', height: '8', fill: '#1a2234'  /* --surface-2 */
         }));
-        /* Diagonal lines */
         idlePat.appendChild(el('line', {
             x1: '0', y1: '0', x2: '0', y2: '8',
             stroke: '#263149', 'stroke-width': '3'    /* --border */
@@ -67,11 +72,9 @@
             height:         '8',
             patternTransform: 'rotate(45)'
         });
-        /* Lighter-orange background */
         csPat.appendChild(el('rect', {
             width: '8', height: '8', fill: '#7a5520'
         }));
-        /* Bright --warn stripes */
         csPat.appendChild(el('line', {
             x1: '0', y1: '0', x2: '0', y2: '8',
             stroke: '#ffb454', 'stroke-width': '4'    /* --warn */
@@ -90,8 +93,19 @@
         if (seg.type === 'context_switch') {
             return 'CS \u2192 P' + seg.pid + ' | ' + seg.t_start + '-' + seg.t_end + ' | ' + dur + ' ms';
         }
-        /* run */
         return 'P' + seg.pid + ' | ' + seg.t_start + '-' + seg.t_end + ' | ' + dur + ' ms';
+    }
+
+    /* ── Playback opacity for a segment ─────────────────────── */
+    /* Rules (simplified per spec):
+     *   seg.t_end <= t        → 1    (fully in the past)
+     *   seg.t_start <= t < t_end → 1    (currently executing / active)
+     *   seg.t_start > t       → 0.15 (future — faint outline hint)
+     */
+    function segOpacity(seg, t) {
+        if (seg.t_end <= t)                         return 1;
+        if (seg.t_start <= t && t < seg.t_end)      return 1;
+        /* seg.t_start > t */                        return 0.15;
     }
 
     /* ── Main render function ────────────────────────────────── */
@@ -110,6 +124,10 @@
             container.innerHTML = '<div class="empty-state">Empty timeline.</div>';
             return;
         }
+
+        /* Normalise t: clamp to [0, total_time] */
+        var tClamped = (t === undefined || t === null) ? 0 : t;
+        tClamped = Math.max(0, Math.min(total_time, tClamped));
 
         /* Available width — prefer clientWidth, fall back to offsetWidth */
         var availW = container.clientWidth || container.offsetWidth || 800;
@@ -142,29 +160,49 @@
             var w = (seg.t_end - seg.t_start) * ppt;
             var y = PADDING;
 
+            /* Compute playback opacity */
+            var opacity = segOpacity(seg, tClamped);
+
             var fill;
             if (seg.type === 'idle') {
                 fill = 'url(#' + IDLE_HATCH_ID + ')';
             } else if (seg.type === 'context_switch') {
                 fill = 'url(#' + CS_STRIPE_ID + ')';
             } else {
-                /* run — use pid colour */
                 fill = window.SCHED.pidColor(seg.pid);
             }
 
             /* Rounded rectangle */
             var rect = el('rect', {
-                x:      x,
-                y:      y,
-                width:  Math.max(w - 1, 1),   /* 1px gap between segments */
-                height: SEG_H,
-                rx:     '4',
-                ry:     '4',
-                fill:   fill,
-                opacity: '1'
+                x:       x,
+                y:       y,
+                width:   Math.max(w - 1, 1),
+                height:  SEG_H,
+                rx:      '4',
+                ry:      '4',
+                fill:    fill,
+                opacity: String(opacity)
             });
             rect.setAttribute('title', segTitle(seg));
             svg.appendChild(rect);
+
+            /* For future segments, draw a subtle stroke outline so the shape is
+             * still recognisable even at 0.15 opacity. */
+            if (opacity < 1) {
+                var outline = el('rect', {
+                    x:              x,
+                    y:              y,
+                    width:          Math.max(w - 1, 1),
+                    height:         SEG_H,
+                    rx:             '4',
+                    ry:             '4',
+                    fill:           'none',
+                    stroke:         '#263149',   /* --border */
+                    'stroke-width': '1',
+                    opacity:        '0.5'
+                });
+                svg.appendChild(outline);
+            }
 
             /* Label inside segment (if wide enough) */
             if (w >= 30) {
@@ -177,16 +215,16 @@
                     labelText = 'P' + seg.pid;
                 }
 
-                /* Semi-dark background for readability over hatch patterns */
                 var txtEl = el('text', {
-                    x:             x + w / 2,
-                    y:             y + SEG_H / 2 + 1,
-                    'text-anchor':     'middle',
+                    x:                   x + w / 2,
+                    y:                   y + SEG_H / 2 + 1,
+                    'text-anchor':       'middle',
                     'dominant-baseline': 'middle',
-                    'font-size':   '11',
-                    'font-weight': '600',
-                    fill:          '#e6ebf5',  /* --text */
-                    'pointer-events': 'none'
+                    'font-size':         '11',
+                    'font-weight':       '600',
+                    fill:                '#e6ebf5',  /* --text */
+                    'pointer-events':    'none',
+                    opacity:             String(opacity)
                 });
                 txtEl.textContent = labelText;
                 svg.appendChild(txtEl);
@@ -194,9 +232,8 @@
         });
 
         /* ── Time axis ───────────────────────────────────────── */
-        var axisY = PADDING + SEG_H; /* top of the axis band */
+        var axisY = PADDING + SEG_H;
 
-        /* Collect all boundary ticks, dedup, sort */
         var tickSet = {};
         timeline.forEach(function(seg) {
             tickSet[seg.t_start] = true;
@@ -204,7 +241,6 @@
         });
         var ticks = Object.keys(tickSet).map(Number).sort(function(a, b) { return a - b; });
 
-        /* Also add every integer tick if ppt >= 28 */
         if (ppt >= 28) {
             for (var ti = 0; ti <= total_time; ti++) {
                 tickSet[ti] = true;
@@ -212,32 +248,28 @@
             ticks = Object.keys(tickSet).map(Number).sort(function(a, b) { return a - b; });
         }
 
-        /* Draw axis line */
         svg.appendChild(el('line', {
             x1: '0', y1: axisY, x2: chartW, y2: axisY,
             stroke: '#263149', 'stroke-width': '1'
         }));
 
-        /* Draw tick marks and labels, skip overlapping labels */
         var lastLabelX = -Infinity;
         ticks.forEach(function(tick) {
             var x = tick * ppt;
 
-            /* Tick mark */
             svg.appendChild(el('line', {
                 x1: x, y1: axisY,
                 x2: x, y2: axisY + 4,
                 stroke: '#8b97b1', 'stroke-width': '1'
             }));
 
-            /* Label: only if >= 20px from previous label */
             if (x - lastLabelX >= 20) {
                 var lbl = el('text', {
                     x:             x,
                     y:             axisY + 16,
                     'text-anchor': 'middle',
                     'font-size':   '10',
-                    fill:          '#8b97b1'  /* --muted */
+                    fill:          '#8b97b1'
                 });
                 lbl.textContent = tick;
                 svg.appendChild(lbl);
@@ -246,17 +278,16 @@
         });
 
         /* ── Playhead ────────────────────────────────────────── */
-        var playX = (t || 0) * ppt;
+        var playX = tClamped * ppt;
 
-        /* Vertical line */
         svg.appendChild(el('line', {
             x1: playX, y1: PADDING - 2,
             x2: playX, y2: axisY + AXIS_H,
-            stroke: '#6ea8fe',  /* --accent */
-            'stroke-width': '2'
+            stroke:           '#6ea8fe',  /* --accent */
+            'stroke-width':   '2'
         }));
 
-        /* Small downward-pointing triangle at top */
+        /* Downward-pointing triangle marker at top of playhead */
         var triSize = 5;
         var triPts  = [
             playX + ',' + (PADDING - 2),
@@ -265,10 +296,27 @@
         ].join(' ');
         svg.appendChild(el('polygon', {
             points: triPts,
-            fill:   '#6ea8fe'  /* --accent */
+            fill:   '#6ea8fe'
         }));
 
         container.appendChild(svg);
+
+        /* ── Auto-scroll to keep playhead visible ───────────── */
+        /* Only scroll if the chart is actually overflowing (scrollable). */
+        if (container.scrollWidth > container.clientWidth) {
+            var margin      = 80;   /* px of padding around playhead */
+            var scrollLeft  = container.scrollLeft;
+            var visibleLeft = scrollLeft;
+            var visibleRight = scrollLeft + container.clientWidth;
+
+            if (playX < visibleLeft + margin) {
+                /* Playhead is near / left of the visible area */
+                container.scrollLeft = Math.max(0, playX - margin);
+            } else if (playX > visibleRight - margin) {
+                /* Playhead is near / right of the visible area */
+                container.scrollLeft = playX - container.clientWidth + margin;
+            }
+        }
     }
 
     /* ── Expose on window.SCHED ──────────────────────────────── */
