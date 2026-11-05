@@ -257,7 +257,27 @@ int simulate(const SimConfig *cfg, const Process *procs, int n,
             }
 
             /* ── 2b. RR EXPIRY (rr only) ── */
-            /* RR EXPIRY - task 14 */
+            if (cfg->algo == ALGO_RR && running != -1 && quantum_left == 0) {
+                if (ready.len == 0) {
+                    /* No other ready processes: reset quantum and keep running */
+                    quantum_left = cfg->quantum;
+                } else {
+                    /* Preempt: push running to END of queue, emit preempt event.
+                       New arrivals (step 1) are already in the queue before us,
+                       so this process lands after them — correct per contract. */
+                    if (queue_push(&ready, running) != 0) {
+                        snprintf(err, errlen, "out of memory");
+                        free(ready.arr);
+                        return 1;
+                    }
+                    if (push_event(out, &ev_cap, t, EV_PREEMPT, out->procs[running].pid, &ready) != 0) {
+                        snprintf(err, errlen, "out of memory");
+                        free(ready.arr);
+                        return 1;
+                    }
+                    running = -1;
+                }
+            }
 
             /* ── 2c. DISPATCH ── */
             if (running == -1) {
