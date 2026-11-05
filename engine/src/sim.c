@@ -254,25 +254,30 @@ int simulate(const SimConfig *cfg, const Process *procs, int n,
                     /* Context switch needed */
                     out->context_switches++;
                     if (cfg->cs_cost > 0) {
-                        /* Pay the switch cost before running X */
+                        /* Pay the switch cost before running X.
+                           Do NOT set running yet; fall through to step 3 which
+                           records the first CS tick at this same tick t. */
                         cs_left   = cfg->cs_cost;
                         cs_target = X;
                         last_run  = out->procs[X].pid; /* update last_run now */
-                        /* Do NOT set running yet; go to next tick */
-                        goto next_t;
+                        /* Fall through — step 3 below will handle this tick. */
                     }
                     /* cs_cost == 0: free switch, fall through to dispatch immediately */
                 }
 
-                /* No switch cost (or free switch) — dispatch now */
-                running      = X;
-                last_run     = out->procs[X].pid;
-                quantum_left = (cfg->algo == ALGO_RR) ? cfg->quantum : (1 << 30);
+                /* No switch cost (or free switch) — dispatch now.
+                   If cs_left > 0 we just initiated a context switch; step 3
+                   will handle this tick, so skip the immediate dispatch. */
+                if (cs_left == 0) {
+                    running      = X;
+                    last_run     = out->procs[X].pid;
+                    quantum_left = (cfg->algo == ALGO_RR) ? cfg->quantum : (1 << 30);
 
-                if (push_event(out, &ev_cap, t, EV_DISPATCH, out->procs[X].pid, &ready) != 0) {
-                    snprintf(err, errlen, "out of memory");
-                    free(ready.arr);
-                    return 1;
+                    if (push_event(out, &ev_cap, t, EV_DISPATCH, out->procs[X].pid, &ready) != 0) {
+                        snprintf(err, errlen, "out of memory");
+                        free(ready.arr);
+                        return 1;
+                    }
                 }
             }
         }
