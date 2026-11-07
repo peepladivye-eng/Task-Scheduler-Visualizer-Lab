@@ -1,8 +1,16 @@
+@import '@fontsource/fraunces/400.css';
+@import '@fontsource/fraunces/600.css';
+@import '@fontsource/inter/400.css';
+@import '@fontsource/inter/500.css';
+@import '@fontsource/inter/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/500.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Base overrides */
+/* Base overrides for V2 lab notebook theme */
 @layer base {
   *, *::before, *::after {
     box-sizing: border-box;
@@ -15,8 +23,8 @@
   }
 
   body {
-    background-color: #0b0e14;
-    color: #e6eaf2;
+    background-color: #f5f1e8; /* paper */
+    color: #1d1b16; /* ink */
     font-family: Inter, system-ui, sans-serif;
     font-size: 14px;
     line-height: 1.5;
@@ -25,5 +33,48 @@
   /* Tabular numbers for all mono text */
   .font-mono {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Component layer: reusable sheet and utility classes */
+@layer components {
+  /* Sheet component: white sections with ink border and shadow */
+  .sheet {
+    background: #fffdf8;
+    border: 1.5px solid #1d1b16;
+    border-radius: 10px;
+    box-shadow: 3px 3px 0 rgba(29, 27, 22, 0.12);
+    padding: 20px;
+  }
+
+  /* Grid paper background pattern (subtle) */
+  .grid-paper {
+    background-image: 
+      linear-gradient(rgba(217, 210, 192, 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(217, 210, 192, 0.3) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+
+  /* Idle segment hatch pattern (diagonal grey) */
+  .hatch-idle {
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 4px,
+      rgba(107, 102, 92, 0.15) 4px,
+      rgba(107, 102, 92, 0.15) 8px
+    );
+  }
+
+  /* Context switch hatch pattern (diagonal red/warn) */
+  .hatch-cs {
+    background-color: #c77700;
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 3px,
+      rgba(255, 255, 255, 0.3) 3px,
+      rgba(255, 255, 255, 0.3) 6px
+    );
   }
 }
