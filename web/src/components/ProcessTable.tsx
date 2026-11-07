@@ -55,21 +55,21 @@ export default function ProcessTable() {
   }
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8rem' }}>
+    <div>
+      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8rem', tableLayout: 'fixed' }}>
         <thead>
           <tr>
-            <th style={TH_STYLE}>PID</th>
-            <th style={{ ...TH_STYLE, ...MONO }}>Arrival</th>
-            <th style={{ ...TH_STYLE, ...MONO }}>Burst</th>
-            <th style={{ ...TH_STYLE, ...MONO }}>Priority</th>
-            <th style={TH_STYLE}>Status</th>
-            <th style={{ ...TH_STYLE, ...MONO }}>Remaining</th>
-            <th style={{ ...TH_STYLE, ...MONO }}>Start</th>
-            <th style={{ ...TH_STYLE, ...MONO }}>Completion</th>
-            <th style={{ ...TH_STYLE, ...MONO }}>Waiting</th>
-            <th style={{ ...TH_STYLE, ...MONO }}>Turnaround</th>
-            <th style={{ ...TH_STYLE, ...MONO }}>Response</th>
+            <th style={TH_STYLE} title="Process ID">PID</th>
+            <th style={{ ...TH_STYLE, ...MONO }} title="Arrival time">Arr</th>
+            <th style={{ ...TH_STYLE, ...MONO }} title="Burst time">Burst</th>
+            <th style={{ ...TH_STYLE, ...MONO }} title="Priority">Pri</th>
+            <th style={TH_STYLE} title="Current status">State</th>
+            <th style={{ ...TH_STYLE, ...MONO }} title="Remaining time">Rem</th>
+            <th style={{ ...TH_STYLE, ...MONO }} title="Start time">Start</th>
+            <th style={{ ...TH_STYLE, ...MONO }} title="Completion time">End</th>
+            <th style={{ ...TH_STYLE, ...MONO }} title="Waiting time">Wait</th>
+            <th style={{ ...TH_STYLE, ...MONO }} title="Turnaround time">TAT</th>
+            <th style={{ ...TH_STYLE, ...MONO }} title="Response time">Resp</th>
           </tr>
         </thead>
         <tbody>

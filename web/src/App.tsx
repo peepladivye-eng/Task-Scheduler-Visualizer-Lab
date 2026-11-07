@@ -35,7 +35,6 @@ function Panel({
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',
-        overflow: 'hidden',
         ...extraStyle,
       }}
       className={className}
@@ -153,21 +152,15 @@ export default function App() {
   return (
     <div
       style={{
-        display: 'grid',
-        /* Row 1: TopBar | Row 2: Banner (collapses to 0 when hidden) | Row 3: Transport | Row 4: panels | Row 5: metrics */
-        gridTemplateRows: 'auto auto auto 1fr auto',
-        gridTemplateColumns: '320px 1fr 340px',
-        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh',
         background: color.bg,
-        gap: '0',
-        overflow: 'hidden',
       }}
     >
-      {/* Row 1 — TopBar, spans all 3 columns */}
+      {/* TopBar */}
       <div
         style={{
-          gridColumn: '1 / -1',
-          gridRow: '1',
           background: color.panel,
           borderBottom: `1px solid ${color.border}`,
           padding: '10px 20px',
@@ -179,23 +172,14 @@ export default function App() {
         <TopBar />
       </div>
 
-      {/* Row 2 — Engine banner (zero-height when not needed) */}
+      {/* Sticky Transport bar */}
       <div
         style={{
-          gridColumn: '1 / -1',
-          gridRow: '2',
-          padding: '0 20px',
-        }}
-      >
-        <EngineBanner />
-      </div>
-
-      {/* Row 3 — Transport bar, spans all 3 columns */}
-      <div
-        style={{
-          gridColumn: '1 / -1',
-          gridRow: '3',
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 10,
           background: color.raised,
+          borderTop: `1px solid ${color.border}`,
           borderBottom: `1px solid ${color.border}`,
           padding: '8px 20px',
           display: 'flex',
@@ -228,89 +212,70 @@ export default function App() {
         </button>
       </div>
 
-      {/* Row 4 — Left rail */}
+      {/* Engine banner */}
+      <div style={{ padding: '0 20px' }}>
+        <EngineBanner />
+      </div>
+
+      {/* Main content column */}
       <div
         style={{
-          gridColumn: '1',
-          gridRow: '4',
-          borderRight: `1px solid ${color.border}`,
+          flex: '1 1 auto',
+          padding: '20px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '8px',
-          padding: '12px',
-          overflowY: 'auto',
+          gap: '24px',
         }}
       >
+        {/* Task Editor section */}
         <Panel title="Task Editor">
           <TaskEditor />
         </Panel>
-      </div>
 
-      {/* Row 4 — Center */}
-      <div
-        style={{
-          gridColumn: '2',
-          gridRow: '4',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          padding: '12px',
-          overflowY: 'auto',
-        }}
-      >
+        {/* Gantt Chart section */}
         {view === 'compare' ? (
-          <Panel title="Compare" style={{ flex: 1 }}>
+          <Panel title="Compare">
             <CompareView />
           </Panel>
         ) : (
-          <>
-            <Panel title="Gantt Chart" style={{ flex: '0 0 auto' }}>
-              {trace
-                ? <Gantt trace={trace} t={t} />
-                : <span style={{ color: color.muted, fontSize: '0.82rem' }}>Run a simulation to see the Gantt chart.</span>}
-            </Panel>
-            <Panel title="Event Log">
-              <EventLog />
-            </Panel>
-          </>
+          <Panel title="Gantt Chart">
+            {trace
+              ? <Gantt trace={trace} t={t} />
+              : <span style={{ color: color.muted, fontSize: '0.82rem' }}>Run a simulation to see the Gantt chart.</span>}
+          </Panel>
         )}
-      </div>
 
-      {/* Row 4 — Right inspector */}
-      <div
-        style={{
-          gridColumn: '3',
-          gridRow: '4',
-          borderLeft: `1px solid ${color.border}`,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          padding: '12px',
-          overflowY: 'auto',
-        }}
-      >
-        <Panel title="CPU">
-          <CpuCard />
-        </Panel>
-        <Panel title="Ready Queue">
-          <ReadyQueue />
-        </Panel>
+        {/* Two-column grid: CPU+Queue | Event log */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+            gap: '16px',
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <Panel title="CPU">
+              <CpuCard />
+            </Panel>
+            <Panel title="Ready Queue">
+              <ReadyQueue />
+            </Panel>
+          </div>
+
+          <Panel title="Event Log">
+            <EventLog />
+          </Panel>
+        </div>
+
+        {/* Process Table section */}
         <Panel title="Process Table">
           <ProcessTable />
         </Panel>
-      </div>
 
-      {/* Row 5 — Metrics bar, spans all 3 columns */}
-      <div
-        style={{
-          gridColumn: '1 / -1',
-          gridRow: '5',
-          borderTop: `1px solid ${color.border}`,
-          background: color.panel,
-          padding: '10px 20px',
-        }}
-      >
-        <MetricsCards />
+        {/* Metrics section */}
+        <Panel title="Metrics">
+          <MetricsCards />
+        </Panel>
       </div>
 
       {/* Keyboard shortcuts popover (portal-style, fixed position) */}

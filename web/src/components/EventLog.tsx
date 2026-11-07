@@ -48,7 +48,7 @@ export default function EventLog() {
     <div
       style={{
         overflowY: 'auto',
-        maxHeight: '240px',
+        maxHeight: '16rem',
         display: 'flex',
         flexDirection: 'column',
         gap: '2px',
