@@ -5,6 +5,8 @@ import Gantt from './components/Gantt'
 import Transport from './components/Transport'
 import CpuCard from './components/CpuCard'
 import ReadyQueue from './components/ReadyQueue'
+import ProcessTable from './components/ProcessTable'
+import EventLog from './components/EventLog'
 import { useStudio } from './store/useStudio'
 
 /** Placeholder panel — children go inside */
@@ -162,7 +164,7 @@ export default function App() {
             : <span style={{ color: color.muted, fontSize: '0.82rem' }}>Run a simulation to see the Gantt chart.</span>}
         </Panel>
         <Panel title="Event Log">
-          <span style={{ color: color.muted, fontSize: '0.82rem' }}>Event log comes in W11</span>
+          <EventLog />
         </Panel>
       </div>
 
@@ -186,7 +188,7 @@ export default function App() {
           <ReadyQueue />
         </Panel>
         <Panel title="Process Table">
-          <span style={{ color: color.muted, fontSize: '0.82rem' }}>Table comes in W11</span>
+          <ProcessTable />
         </Panel>
       </div>
 
