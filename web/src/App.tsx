@@ -11,6 +11,7 @@ import MetricsCards from './components/MetricsCards'
 import TopBar from './components/TopBar'
 import CompareView from './components/CompareView'
 import EngineBanner from './components/EngineBanner'
+import ScenarioBar from './components/ScenarioBar'
 import { useStudio } from './store/useStudio'
 
 /** Reusable panel with optional title */
@@ -227,6 +228,9 @@ export default function App() {
           gap: '24px',
         }}
       >
+        {/* Scenario Bar */}
+        <ScenarioBar />
+
         {/* Task Editor section */}
         <Panel title="Task Editor">
           <TaskEditor />
