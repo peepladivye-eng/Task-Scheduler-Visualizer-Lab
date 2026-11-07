@@ -6,8 +6,10 @@ var os   = require('os');
 var cp   = require('child_process');
 
 var PORT    = process.env.PORT || 3000;
-var VIEWER  = path.join(__dirname, 'viewer');
 var ROOT    = __dirname;
+/* Prefer web/dist (built React app) if it exists, fall back to viewer/ */
+var webDist = path.join(__dirname, 'web', 'dist');
+var VIEWER  = fs.existsSync(path.join(webDist, 'index.html')) ? webDist : path.join(__dirname, 'viewer');
 
 /* Find binary */
 var BINARY = null;
