@@ -1,4 +1,5 @@
 import { color } from './design/tokens'
+import TaskEditor from './components/TaskEditor'
 
 /** Placeholder panel — children go inside */
 function Panel({
@@ -100,7 +101,7 @@ export default function App() {
         }}
       >
         <Panel title="Task Editor">
-          <span style={{ color: color.muted, fontSize: '0.82rem' }}>Editor comes in W7</span>
+          <TaskEditor />
         </Panel>
       </div>
 
