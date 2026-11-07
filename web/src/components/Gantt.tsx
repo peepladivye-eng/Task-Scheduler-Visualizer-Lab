@@ -1,8 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import type { Trace } from '../types/trace'
 import { color } from '../design/tokens'
 import { pidColor, IDLE_PATTERN, CS_PATTERN } from '../design/pidColor'
 import { totalTime } from '../lib/deriveState'
+import { useStudio } from '../store/useStudio'
 
 interface Props {
   trace: Trace
@@ -19,6 +21,8 @@ const MIN_PPT = 28
 export default function Gantt({ trace, t }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(800)
+  const reducedMotion = useReducedMotion()
+  const speed = useStudio((s) => s.speed)
 
   // Measure container width with ResizeObserver
   useEffect(() => {
@@ -36,7 +40,7 @@ export default function Gantt({ trace, t }: Props) {
   const ppt = Math.max(MIN_PPT, Math.floor(containerWidth / total))
   const svgWidth = ppt * total
 
-  // Segment opacity: fully visible if t_end <= t or t_start <= t < t_end; dimmed if future
+  // Segment opacity: fully visible if segment has started, dimmed if future
   function segOpacity(seg: Trace['timeline'][number]): number {
     if (seg.t_end <= t) return 1.0
     if (seg.t_start <= t) return 1.0
@@ -51,7 +55,7 @@ export default function Gantt({ trace, t }: Props) {
     boundaries.add(seg.t_start)
     boundaries.add(seg.t_end)
   }
-  // If ppt >= 28, also add every integer
+  // If ppt >= 28, also add every integer tick
   if (ppt >= MIN_PPT) {
     for (let tick = 0; tick <= total; tick++) boundaries.add(tick)
   }
@@ -69,6 +73,15 @@ export default function Gantt({ trace, t }: Props) {
   }
 
   const axisY = PADDING_TOP + ROW_HEIGHT
+  const px = t * ppt  // playhead x position
+
+  // Playhead triangle points
+  const triSize = 6
+  const triY = PADDING_TOP - 2
+  const triPoints = `${px},${triY + triSize} ${px - triSize / 2},${triY} ${px + triSize / 2},${triY}`
+
+  // Playhead transition duration: based on playback speed (500ms / speed = interval)
+  const playheadDuration = reducedMotion ? 0 : (500 / speed) / 1000
 
   return (
     <div
@@ -78,7 +91,6 @@ export default function Gantt({ trace, t }: Props) {
         overflowY: 'hidden',
         position: 'relative',
         width: '100%',
-        // Reserve vertical space so the outer panel doesn't collapse
         minHeight: SVG_HEIGHT + 4,
       }}
     >
@@ -100,11 +112,10 @@ export default function Gantt({ trace, t }: Props) {
           </pattern>
         </defs>
 
-        {/* Render timeline segments */}
+        {/* Render timeline segments with animated opacity */}
         {trace.timeline.map((seg, idx) => {
           const x = seg.t_start * ppt
           const w = (seg.t_end - seg.t_start) * ppt
-          const opacity = segOpacity(seg)
 
           let fill: string
           let labelText: string | null = null
@@ -122,7 +133,12 @@ export default function Gantt({ trace, t }: Props) {
           }
 
           return (
-            <g key={idx} opacity={opacity}>
+            /* motion.g animates opacity on each tick change */
+            <motion.g
+              key={idx}
+              animate={{ opacity: segOpacity(seg) }}
+              transition={{ duration: reducedMotion ? 0 : 0.22 }}
+            >
               <rect
                 x={x}
                 y={PADDING_TOP}
@@ -146,7 +162,7 @@ export default function Gantt({ trace, t }: Props) {
                   {labelText}
                 </text>
               )}
-            </g>
+            </motion.g>
           )
         })}
 
@@ -184,30 +200,29 @@ export default function Gantt({ trace, t }: Props) {
           </g>
         ))}
 
-        {/* Playhead: downward triangle and vertical line */}
-        {(() => {
-          const px = t * ppt
-          // Triangle pointing down, above the timeline
-          const triSize = 6
-          const triY = PADDING_TOP - 2
-          const triPoints = `${px},${triY + triSize} ${px - triSize / 2},${triY} ${px + triSize / 2},${triY}`
-          return (
-            <g>
-              <polygon
-                points={triPoints}
-                fill={color.accent}
-              />
-              <line
-                x1={px}
-                y1={PADDING_TOP}
-                x2={px}
-                y2={axisY}
-                stroke={color.accent}
-                strokeWidth="2"
-              />
-            </g>
-          )
-        })()}
+        {/* Playhead: animated triangle + line, moves with ease: linear at playback speed */}
+        <motion.g
+          animate={{ x: px }}
+          transition={{
+            duration: playheadDuration,
+            ease: 'linear',
+          }}
+          /* Start at 0 and let animate drive it */
+          initial={false}
+        >
+          <polygon
+            points={`0,${triY + triSize} ${-triSize / 2},${triY} ${triSize / 2},${triY}`}
+            fill={color.accent}
+          />
+          <line
+            x1={0}
+            y1={PADDING_TOP}
+            x2={0}
+            y2={axisY}
+            stroke={color.accent}
+            strokeWidth="2"
+          />
+        </motion.g>
       </svg>
     </div>
   )

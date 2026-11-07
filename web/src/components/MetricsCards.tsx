@@ -1,4 +1,5 @@
 import React from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useStudio } from '../store/useStudio'
 import { color } from '../design/tokens'
 import { fmtMs, fmtPct, fmt } from '../lib/format'
@@ -11,6 +12,7 @@ interface CardDef {
 
 export default function MetricsCards() {
   const trace = useStudio((s) => s.trace)
+  const reducedMotion = useReducedMotion()
 
   if (!trace) {
     return (
@@ -56,16 +58,24 @@ export default function MetricsCards() {
   ]
 
   return (
+    /* Key on algo + avg_waiting so the grid re-mounts (re-animates) when a new run completes */
     <div
+      key={trace.algo + trace.metrics.avg_waiting}
       style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(3, 1fr)',
         gap: '8px',
       }}
     >
-      {cards.map((card) => (
-        <div
+      {cards.map((card, index) => (
+        <motion.div
           key={card.label}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{
+            duration: reducedMotion ? 0 : 0.22,
+            delay: reducedMotion ? 0 : index * 0.03,
+          }}
           style={{
             background: color.raised,
             border: `1px solid ${color.border}`,
@@ -96,7 +106,7 @@ export default function MetricsCards() {
           <span style={{ fontSize: '0.65rem', color: color.muted }}>
             {card.formula}
           </span>
-        </div>
+        </motion.div>
       ))}
     </div>
   )

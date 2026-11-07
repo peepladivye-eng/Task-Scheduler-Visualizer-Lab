@@ -1,4 +1,5 @@
 import React from 'react'
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useStudio, useDerived } from '../store/useStudio'
 import { totalTime } from '../lib/deriveState'
 import { color } from '../design/tokens'
@@ -8,6 +9,7 @@ export default function CpuCard() {
   const trace = useStudio((s) => s.trace)
   const t = useStudio((s) => s.t)
   const derived = useDerived()
+  const reducedMotion = useReducedMotion()
 
   // null derived → no trace loaded
   if (!derived || !trace) {
@@ -17,10 +19,15 @@ export default function CpuCard() {
   }
 
   const total = totalTime(trace)
+  const fadeDuration = reducedMotion ? 0 : 0.16
 
-  // Context switch active
+  // Determine the current content and a stable key for AnimatePresence
+  let contentKey: string
+  let content: React.ReactNode
+
   if (derived.csActive && derived.csPid !== null) {
-    return (
+    contentKey = `cs-${derived.csPid}`
+    content = (
       <div
         style={{
           border: `1px solid ${color.warn}88`,
@@ -40,18 +47,15 @@ export default function CpuCard() {
         </span>
       </div>
     )
-  }
-
-  // Running
-  if (derived.running !== null) {
+  } else if (derived.running !== null) {
     const pid = derived.running.pid
     const pc = pidColor(pid)
     const proc = trace.processes.find((p) => p.pid === pid)
     const burst = proc?.burst ?? 1
     const rem = derived.remaining[pid] ?? 0
     const progressPct = Math.max(0, Math.min(100, (rem / burst) * 100))
-
-    return (
+    contentKey = `run-${pid}`
+    content = (
       <div
         style={{
           border: `1px solid ${pc}88`,
@@ -89,20 +93,33 @@ export default function CpuCard() {
         </div>
       </div>
     )
-  }
-
-  // Idle / all done
-  if (t >= total) {
-    return (
+  } else if (t >= total) {
+    contentKey = 'done'
+    content = (
       <span style={{ color: color.success, fontSize: '0.88rem', fontWeight: 600 }}>
         All done ✓
+      </span>
+    )
+  } else {
+    contentKey = 'idle'
+    content = (
+      <span style={{ color: color.muted, fontSize: '0.88rem' }}>
+        CPU idle
       </span>
     )
   }
 
   return (
-    <span style={{ color: color.muted, fontSize: '0.88rem' }}>
-      CPU idle
-    </span>
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={contentKey}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: fadeDuration }}
+      >
+        {content}
+      </motion.div>
+    </AnimatePresence>
   )
 }
