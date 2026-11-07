@@ -9,6 +9,7 @@ import ProcessTable from './components/ProcessTable'
 import EventLog from './components/EventLog'
 import MetricsCards from './components/MetricsCards'
 import TopBar from './components/TopBar'
+import CompareView from './components/CompareView'
 import { useStudio } from './store/useStudio'
 
 /** Placeholder panel — children go inside */
@@ -58,6 +59,7 @@ export default function App() {
   const step = useStudio((s) => s.step)
   const seekStart = useStudio((s) => s.seekStart)
   const seekEnd = useStudio((s) => s.seekEnd)
+  const view = useStudio((s) => s.view)
 
   // Playback loop
   useEffect(() => {
@@ -155,14 +157,22 @@ export default function App() {
           overflowY: 'auto',
         }}
       >
-        <Panel title="Gantt Chart" style={{ flex: '0 0 auto' }}>
-          {trace
-            ? <Gantt trace={trace} t={t} />
-            : <span style={{ color: color.muted, fontSize: '0.82rem' }}>Run a simulation to see the Gantt chart.</span>}
-        </Panel>
-        <Panel title="Event Log">
-          <EventLog />
-        </Panel>
+        {view === 'compare' ? (
+          <Panel title="Compare" style={{ flex: 1 }}>
+            <CompareView />
+          </Panel>
+        ) : (
+          <>
+            <Panel title="Gantt Chart" style={{ flex: '0 0 auto' }}>
+              {trace
+                ? <Gantt trace={trace} t={t} />
+                : <span style={{ color: color.muted, fontSize: '0.82rem' }}>Run a simulation to see the Gantt chart.</span>}
+            </Panel>
+            <Panel title="Event Log">
+              <EventLog />
+            </Panel>
+          </>
+        )}
       </div>
 
       {/* Right inspector */}
