@@ -4,6 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "gen:presets": "node ../tools/gen-presets.js",
+    "predev": "npm run gen:presets",
+    "prebuild": "npm run gen:presets",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
