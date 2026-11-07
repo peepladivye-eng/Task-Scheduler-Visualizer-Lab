@@ -3,6 +3,8 @@ import { color } from './design/tokens'
 import TaskEditor from './components/TaskEditor'
 import Gantt from './components/Gantt'
 import Transport from './components/Transport'
+import CpuCard from './components/CpuCard'
+import ReadyQueue from './components/ReadyQueue'
 import { useStudio } from './store/useStudio'
 
 /** Placeholder panel — children go inside */
@@ -178,10 +180,10 @@ export default function App() {
         }}
       >
         <Panel title="CPU">
-          <span style={{ color: color.muted, fontSize: '0.82rem' }}>CPU card comes in W10</span>
+          <CpuCard />
         </Panel>
         <Panel title="Ready Queue">
-          <span style={{ color: color.muted, fontSize: '0.82rem' }}>Queue comes in W10</span>
+          <ReadyQueue />
         </Panel>
         <Panel title="Process Table">
           <span style={{ color: color.muted, fontSize: '0.82rem' }}>Table comes in W11</span>
