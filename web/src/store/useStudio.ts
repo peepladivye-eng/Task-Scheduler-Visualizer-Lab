@@ -48,6 +48,7 @@ interface StudioActions {
   setSpeed: (s: Speed) => void
   tick: () => void
   checkEngine: () => Promise<void>
+  setError: (e: string | null) => void
 }
 
 type StudioStore = StudioState & StudioActions
@@ -165,6 +166,8 @@ export const useStudio = create<StudioStore>((set, get) => ({
     const online = await pingEngine()
     set({ engineOnline: online })
   },
+
+  setError: (error) => set({ error, status: error === null ? 'idle' : 'error' }),
 }))
 
 /**
