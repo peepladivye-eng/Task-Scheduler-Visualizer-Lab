@@ -1,15 +1,19 @@
 import { color } from './design/tokens'
 import TaskEditor from './components/TaskEditor'
+import Gantt from './components/Gantt'
+import { useStudio } from './store/useStudio'
 
 /** Placeholder panel — children go inside */
 function Panel({
   title,
   children,
   className = '',
+  style: extraStyle,
 }: {
   title?: string
   children?: React.ReactNode
   className?: string
+  style?: React.CSSProperties
 }) {
   return (
     <div
@@ -22,6 +26,7 @@ function Panel({
         flexDirection: 'column',
         gap: '8px',
         overflow: 'hidden',
+        ...extraStyle,
       }}
       className={className}
     >
@@ -36,6 +41,9 @@ function Panel({
 }
 
 export default function App() {
+  const trace = useStudio((s) => s.trace)
+  const t = useStudio((s) => s.t)
+
   return (
     <div
       style={{
@@ -117,8 +125,10 @@ export default function App() {
           overflowY: 'auto',
         }}
       >
-        <Panel title="Gantt Chart">
-          <span style={{ color: color.muted, fontSize: '0.82rem' }}>Gantt comes in W8</span>
+        <Panel title="Gantt Chart" style={{ flex: '0 0 auto' }}>
+          {trace
+            ? <Gantt trace={trace} t={t} />
+            : <span style={{ color: color.muted, fontSize: '0.82rem' }}>Run a simulation to see the Gantt chart.</span>}
         </Panel>
         <Panel title="Event Log">
           <span style={{ color: color.muted, fontSize: '0.82rem' }}>Event log comes in W11</span>
