@@ -1,5 +1,5 @@
 import React from 'react'
-import { SkipBack, ChevronLeft, Play, Pause, ChevronRight, SkipForward } from 'lucide-react'
+import { SkipBack, ChevronLeft, Play, Pause, ChevronRight, SkipForward, RotateCcw } from 'lucide-react'
 import { useStudio } from '../store/useStudio'
 import { totalTime } from '../lib/deriveState'
 import { color, radius } from '../design/tokens'
@@ -22,6 +22,7 @@ export default function Transport() {
   const setT = useStudio((s) => s.setT)
 
   const total = trace ? totalTime(trace) : 0
+  const atEnd = t >= total
 
   // Shared button style
   const btnBase: React.CSSProperties = {
@@ -78,11 +79,11 @@ export default function Transport() {
           <ChevronLeft size={14} />
         </button>
         <button
-          aria-label={playing ? 'Pause' : 'Play'}
+          aria-label={playing ? 'Pause' : atEnd ? 'Replay' : 'Play'}
           style={{ ...btnBase, borderColor: color.accent, color: color.accent, padding: '5px 12px' }}
           onClick={toggle}
         >
-          {playing ? <Pause size={14} /> : <Play size={14} />}
+          {playing ? <Pause size={14} /> : atEnd ? <RotateCcw size={14} /> : <Play size={14} />}
         </button>
         <button
           aria-label="Step forward"
