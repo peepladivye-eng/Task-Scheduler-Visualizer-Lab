@@ -7,6 +7,8 @@ import CpuCard from './components/CpuCard'
 import ReadyQueue from './components/ReadyQueue'
 import ProcessTable from './components/ProcessTable'
 import EventLog from './components/EventLog'
+import MetricsCards from './components/MetricsCards'
+import TopBar from './components/TopBar'
 import { useStudio } from './store/useStudio'
 
 /** Placeholder panel — children go inside */
@@ -104,12 +106,7 @@ export default function App() {
           gap: '16px',
         }}
       >
-        <span style={{ fontWeight: 700, fontSize: '0.95rem', letterSpacing: '0.02em' }}>
-          Scheduler Studio
-        </span>
-        <span style={{ color: color.muted, fontSize: '0.8rem' }}>
-          [TopBar — algo tabs + engine status come in W12]
-        </span>
+        <TopBar />
       </div>
 
       {/* Transport bar — spans all 3 columns */}
@@ -200,11 +197,9 @@ export default function App() {
           borderTop: `1px solid ${color.border}`,
           background: color.panel,
           padding: '10px 20px',
-          color: color.muted,
-          fontSize: '0.82rem',
         }}
       >
-        [Metrics cards come in W12]
+        <MetricsCards />
       </div>
     </div>
   )
