@@ -268,26 +268,6 @@ export default function TaskEditor() {
           style={{ ...inputStyle, width: '80px', fontFamily: '"JetBrains Mono", Consolas, monospace' }}
         />
       </div>
-
-      {/* Run button */}
-      <button
-        onClick={() => void run()}
-        disabled={hasErrors || isRunning}
-        style={{
-          background: hasErrors || isRunning ? color.raised : color.accent,
-          color: hasErrors || isRunning ? color.muted : color.bg,
-          border: 'none',
-          borderRadius: radius.control,
-          padding: '8px',
-          fontWeight: 600,
-          fontSize: '0.88rem',
-          cursor: hasErrors || isRunning ? 'not-allowed' : 'pointer',
-          width: '100%',
-          marginTop: '4px',
-        }}
-      >
-        {isRunning ? 'Running…' : '▶ Run simulation'}
-      </button>
     </div>
   )
 }

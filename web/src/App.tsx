@@ -173,46 +173,6 @@ export default function App() {
         <TopBar />
       </div>
 
-      {/* Sticky Transport bar */}
-      <div
-        style={{
-          position: 'sticky',
-          bottom: 0,
-          zIndex: 10,
-          background: color.raised,
-          borderTop: `1px solid ${color.border}`,
-          borderBottom: `1px solid ${color.border}`,
-          padding: '8px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-        }}
-      >
-        <Transport />
-        {/* Shortcuts "?" button at far right of transport bar */}
-        <button
-          onClick={() => setShowShortcuts((v) => !v)}
-          aria-label="Show keyboard shortcuts"
-          title="Keyboard shortcuts (?)"
-          style={{
-            marginLeft: 'auto',
-            background: showShortcuts ? `${color.accent}22` : 'transparent',
-            border: `1px solid ${showShortcuts ? color.accent : color.border}`,
-            borderRadius: '6px',
-            padding: '4px 9px',
-            color: showShortcuts ? color.accent : color.muted,
-            cursor: 'pointer',
-            fontSize: '0.82rem',
-            fontFamily: '"JetBrains Mono", Consolas, monospace',
-            fontWeight: 600,
-            lineHeight: 1,
-            transition: 'color 160ms, border-color 160ms, background 160ms',
-          }}
-        >
-          ?
-        </button>
-      </div>
-
       {/* Engine banner */}
       <div style={{ padding: '0 20px' }}>
         <EngineBanner />
@@ -235,6 +195,18 @@ export default function App() {
         <Panel title="Task Editor">
           <TaskEditor />
         </Panel>
+
+        {/* Transport bar - MOVED HERE before Gantt */}
+        <div
+          style={{
+            background: color.raised,
+            border: `1px solid ${color.line}`,
+            borderRadius: '8px',
+            padding: '12px 16px',
+          }}
+        >
+          <Transport />
+        </div>
 
         {/* Gantt Chart section */}
         {view === 'compare' ? (
