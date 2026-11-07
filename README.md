@@ -1,17 +1,16 @@
-# CPU Scheduler Visualizer & Teaching Lab
+# CPU Scheduler Simulator
 
-A comprehensive CPU scheduling simulator with an interactive teaching interface. Built for OS course lab projects with emphasis on educational value.
+A CPU scheduling simulator with teaching features. Built for OS course lab projects.
 
 ## 🎯 Project Overview
 
-**C Engine** (Simulation) + **React App** (Visualization & Teaching)
+**C Engine** (tick-based simulation) + **React App** (interactive visualization)
 
-- **6 Scheduling Algorithms**: FCFS, SJF, SRTF, Priority, Priority-Preemptive, Round Robin
+- **6 Scheduling Algorithms**: FCFS, SJF, SRTF, Priority (non-preemptive), Priority-Preemptive, Round Robin
 - **Context Switch Modeling**: Configurable cost (0-100ms)
-- **Teaching Features**: Live explanations of why decisions were made
-- **Auto-Run**: Changes instantly update visualizations
-- **Compare Mode**: Run all 6 algorithms side-by-side
-- **Test Coverage**: 42 passing tests including consistency validation
+- **Explain Engine**: Independent verification that cross-checks every scheduling decision
+- **Auto-Run**: Changes instantly update visualizations (150ms debounce)
+- **Test Coverage**: 40 C engine tests + 42 web app tests, all passing
 
 ## 🚀 Quick Start
 
@@ -26,7 +25,7 @@ cd engine
 make -C engine
 ```
 
-### 2. Run the Web App (Recommended)
+### 2. Run the Web App
 ```bash
 # Install dependencies (first time only)
 cd web
@@ -43,183 +42,175 @@ Then open **http://localhost:3000**
 
 ### 3. Test Everything
 ```bash
-# C engine tests
+# C engine tests (40 tests)
 node tools/run-tests.js
 
-# Web app tests
+# Web app tests (42 tests)
 cd web
 npm test
 ```
 
 ## 📊 Features
 
-### Phase A: Core Functionality ✅
-- **Reactive Pipeline**: Edit inputs → instant visualization (150ms debounce)
-- **Playback Controls**: Play/pause, step, seek, replay from t=0
-- **Modern Layout**: Single-column flow, no hidden controls
+### Core Functionality
+- **Reactive Pipeline**: Edit inputs → instant visualization with 150ms debounce
+- **Playback Controls**: Play/pause, step forward/back, seek, auto-replay from t=0 when finished
+- **Timeline Visualization**: Gantt chart showing run/idle/context-switch segments
+- **Process Metrics**: Waiting time, turnaround time, response time, completion time
+- **System Metrics**: CPU utilization, throughput, context switch count
 
-### Phase B: Teaching UI ✅
-- **Design System V2**: Light "lab notebook" theme
-- **Time Scale Utility**: Pixel-perfect timeline alignment
-- **🌟 Explain Engine**: The key differentiator
-  - Analyzes every scheduling decision
-  - Natural language explanations
-  - Shows compared values (why P2 over P3?)
-  - 97% consistency verification
-- **Scenario Bar**: Interactive algorithm/parameter controls
+### The Explain Engine
+Located in `web/src/lib/explain.ts`, this module provides independent verification:
 
-## 🧪 The Explain Engine (Teaching Core)
+- Reads the C engine's output trace
+- Applies scheduling rules independently
+- Cross-checks every dispatch decision
+- Shows which process was chosen and why
+- Displays compared values (burst times, priorities, etc.)
+- **100% consistency** verified across all 7 test fixtures
 
-Located in `web/src/lib/explain.ts`, this is what makes it a **teaching tool**:
-
-```typescript
-// For every dispatch event, generates:
-{
-  t: 5,
-  algo: 'sjf',
-  chosen: 2,
-  ruleText: "Shortest Job First: the smallest total burst goes first.",
-  keyName: 'burst',
-  candidates: [
-    { pid: 1, keyValue: 8 },
-    { pid: 2, keyValue: 3 },  // ✔ chosen
-    { pid: 3, keyValue: 5 }
-  ],
-  tieBreak: false,
-  consistent: true  // cross-check: engine did pick the best
-}
-```
-
-**This independent verification ensures correctness and enables deep learning.**
+This independent cross-check ensures correctness and provides educational value by explaining *why* each scheduling decision was made.
 
 ## 📁 Project Structure
 
 ```
 .
-├── engine/              # C scheduler (simulation only)
+├── engine/              # C scheduler (simulation engine)
 │   ├── src/            # parser, sim, metrics, trace, main
 │   └── tests/          # parser unit tests
-├── web/                # React teaching app
+├── web/                # React visualization app
 │   ├── src/
 │   │   ├── lib/
 │   │   │   ├── validate.ts      # Input validation
-│   │   │   ├── timeScale.ts     # Timeline utilities
-│   │   │   ├── explain.ts       # 🌟 Teaching engine
-│   │   │   ├── deriveState.ts   # State derivation
+│   │   │   ├── timeScale.ts     # Timeline pixel calculations
+│   │   │   ├── explain.ts       # Independent verification engine
+│   │   │   ├── deriveState.ts   # Playback state derivation
 │   │   │   └── api.ts           # Engine communication
 │   │   ├── store/
-│   │   │   └── useStudio.ts     # Reactive Zustand store
-│   │   ├── components/          # UI components
+│   │   │   └── useStudio.ts     # Reactive Zustand store with auto-run
+│   │   ├── components/          # React UI components
 │   │   └── design/              # Design tokens
-│   └── tests/          # 42 passing tests
-├── viewer/             # Vanilla HTML/JS viewer (legacy)
-├── fixtures/           # 7 test scenarios with expected output
-├── fixtures-invalid/   # 8 invalid input tests
-├── tools/              # Test runner, preset generator
-└── docs/               # Algorithm notes, design docs
+│   └── tests/          # 42 tests including explain consistency
+├── viewer/             # Legacy vanilla HTML/JS viewer
+├── fixtures/           # 7 test scenarios with expected JSON output
+├── fixtures-invalid/   # 8 invalid input test cases
+├── tools/              # Test runner, preset generator, validators
+└── docs/               # Algorithm notes, design documents
 ```
 
 ## 🧮 Algorithm Implementation
 
-All algorithms follow the **contract** in `.kiro/steering/contract.md`:
+All algorithms follow the contract specification in `.kiro/steering/contract.md`:
 
 1. **Tick-based simulation** (1 tick = 1ms)
-2. **Event emission** (arrive, dispatch, preempt, complete)
+2. **Event emission** (arrive, dispatch, preempt, complete) with ready queue snapshots
 3. **Timeline segments** (run, idle, context_switch)
-4. **Tie-breaking**: arrival time → lower PID
+4. **Tie-breaking rules**: If key values tie → earliest arrival → lowest PID
 
-## 🎓 For Your VIVA / Demonstration
+### Selection Rules
+- **FCFS**: Queue front (arrival order)
+- **SJF**: Smallest burst time (non-preemptive)
+- **SRTF**: Smallest remaining time (preemptive on arrival)
+- **Priority**: Lowest priority number (non-preemptive)
+- **Priority-P**: Lowest priority number (preemptive on arrival)
+- **RR**: Queue front with quantum time slicing
 
-### Key Points to Emphasize
+## 🎓 For VIVA / Demonstration
+
+### Key Technical Points
 
 1. **Dual Architecture**
-   - C engine: Pure simulation (no UI coupling)
-   - React app: Visualization + teaching explanations
+   - C engine: Pure simulation, no UI dependencies
+   - React app: Visualization and explanation layer
+   - Communication via JSON trace format (version "1.0")
 
 2. **Independent Verification**
-   - Explain engine cross-checks every decision
-   - 97% consistency across all test fixtures
-   - Catches implementation bugs
+   - Explain engine independently applies scheduling rules
+   - 100% consistency across all test fixtures
+   - Catches implementation bugs through cross-validation
 
 3. **Educational Value**
-   - Not just "what happened" but "why"
-   - Natural language explanations
-   - Compared values shown transparently
+   - Shows not just *what* happened but *why*
+   - Natural language rule descriptions
+   - Compared candidate values displayed clearly
 
-4. **Testing**
-   - 40/40 C engine tests (all fixtures)
-   - 42/42 Web app tests (including explain consistency)
-   - Automated CI/CD ready
+4. **Testing Strategy**
+   - 40 C engine tests covering all algorithms and edge cases
+   - 42 web app tests including consistency validation
+   - Automated fixture comparison
+   - Invalid input handling tests
 
 5. **Reactive UX**
-   - No manual "Run" button in main flow
-   - Instant feedback on changes
-   - Validates inputs before simulation
+   - No manual "Run" button in main workflow
+   - 150ms debounced auto-run on any change
+   - Input validation before simulation
 
 ### Demo Flow
 
 1. **Open** http://localhost:3000
-2. **Show** auto-run: edit burst → Gantt updates
-3. **Switch algorithms**: FCFS → SJF → SRTF
-4. **Explain a decision**: Point to a process in timeline, show why it was chosen
-5. **Compare mode**: Show all 6 algorithms on same input
-6. **Edge cases**: Invalid input → validation messages
+2. **Edit inputs**: Change burst time → Gantt updates automatically
+3. **Switch algorithms**: FCFS → SJF → SRTF → Priority → RR
+4. **Observe metrics**: Watch waiting/turnaround/response times update
+5. **Check explain consistency**: All dispatch decisions verified
+6. **Test edge cases**: Try invalid inputs → see validation messages
 
-## 🛠️ Development
+## 🛠️ Development Commands
 
-### Commands
 ```bash
 # C engine
-make -C engine            # Build
-make -C engine clean      # Clean
+cd engine
+make                     # Build (Linux/Mac)
+.\build.ps1              # Build (Windows)
+make clean               # Clean build artifacts
 
 # Web app
 cd web
-npm install               # Install dependencies
-npm run dev               # Dev server
-npm run build             # Production build
-npm test                  # Run tests
-npm run typecheck         # TypeScript validation
+npm install              # Install dependencies
+npm run dev              # Development server (Vite)
+npm run build            # Production build
+npm test                 # Run 42 tests
+npm run typecheck        # TypeScript validation
 
-# Testing
-node tools/run-tests.js   # All fixtures
+# Full project testing
+node tools/run-tests.js  # All 40 C engine tests
 ```
 
-### Tech Stack
-- **Engine**: C11, gcc, standard library only
-- **Web**: React 18, TypeScript, Zustand, Vite
-- **Styling**: Tailwind CSS with custom tokens
-- **Fonts**: Fraunces (headings), Inter (UI), IBM Plex Mono (numbers)
+## 📝 Tech Stack
 
-## 📝 Contract Compliance
+- **Engine**: C11, gcc, standard library only
+- **Web**: React 18, TypeScript 5, Zustand (state), Vite (build)
+- **Styling**: Tailwind CSS with custom design tokens
+- **Fonts**: Fraunces (headings), Inter (UI), IBM Plex Mono (code/numbers)
+- **Testing**: Vitest (web), custom validator (C)
+
+## 📋 Contract Compliance
 
 ✅ **Input Format**: `pid arrival burst priority` (space/tab separated)  
-✅ **Limits**: 1-64 processes, pid >= 1, arrival 0-10000, burst 1-10000, priority 0-1000  
-✅ **Trace Format**: JSON with version "1.0"  
-✅ **Compare Mode**: All 6 algorithms, quantum default 4  
-✅ **CLI**: `scheduler --algo <algo> --input <file> [--quantum N] [--context-switch N] [--out FILE] [--compare]`
+✅ **Limits**: 1-64 processes, pid ≥ 1 (unique), arrival 0-10000, burst 1-10000, priority 0-1000  
+✅ **Trace Format**: JSON with version "1.0", exact key order per contract  
+✅ **CLI**: `scheduler --algo <algo> --input <file> [--quantum N] [--context-switch N] [--out FILE] [--compare]`  
+✅ **Tie-breaking**: Earliest arrival → lowest PID  
+✅ **Metrics**: Exactly 2 decimal places for floating-point values
 
-## 🏆 What Makes This Special
+## 🏆 What Makes This Project Valuable
 
-This isn't just a scheduler simulator. It's a **teaching laboratory** that:
-
-1. **Shows work**: Every decision explained with numbers
-2. **Cross-validates**: Independent verification of correctness
-3. **Reacts instantly**: Live feedback on changes
-4. **Tests extensively**: 42 automated tests
-5. **Scales educationally**: From basic FCFS to preemptive priority
-
-The **explain engine** is the secret sauce that transforms raw scheduling traces into learning moments.
+1. **Correctness through verification**: The explain engine independently validates every decision
+2. **Educational focus**: Shows the *reasoning* behind scheduling choices
+3. **Comprehensive testing**: 82 automated tests ensure reliability
+4. **Clean architecture**: Separation of simulation (C) and visualization (React)
+5. **Contract adherence**: Strict compliance with specification
 
 ## 📄 License & Attribution
 
-Academic project for OS course. Code examples and algorithms follow standard OS textbook implementations (Silberschatz, Galvin, Gagne).
+Academic project for Operating Systems course. Algorithm implementations follow standard OS textbook approaches (Silberschatz, Galvin, Gagne).
 
-## 🔗 Links
+## 🔗 Repository
 
 - **GitHub**: https://github.com/peepladivye-eng/Task-Scheduler-Visualizer-Lab
-- **Live Demo**: (Deploy to GitHub Pages or Vercel)
 
 ---
 
-**Built with ❤️ for OS education**
+**Test Results (as of last run):**
+- C engine: 40/40 passing
+- Web app: 42/42 passing  
+- Explain consistency: 100% (29/29 dispatch decisions verified)

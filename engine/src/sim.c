@@ -66,7 +66,7 @@ static int add_tick(SimResult *r, int *seg_cap, SegType type, int pid, int t)
    Returns 0 on success. */
 static int push_event(SimResult *r, int *ev_cap,
                       int t, EvType type, int pid,
-                      const Queue *q)
+                      const Queue *q, const Process *procs)
 {
     if (r->nevents == *ev_cap) {
         int newcap = *ev_cap * 2;
@@ -80,8 +80,9 @@ static int push_event(SimResult *r, int *ev_cap,
     ev->type = type;
     ev->pid  = pid;
     ev->qlen = q->len;
+    /* Convert indices to PIDs */
     for (int i = 0; i < q->len; i++)
-        ev->queue[i] = q->arr[i];
+        ev->queue[i] = procs[q->arr[i]].pid;
     return 0;
 }
 
@@ -210,7 +211,7 @@ int simulate(const SimConfig *cfg, const Process *procs, int n,
                     return 1;
                 }
                 /* Emit arrive event; snapshot is current ready queue state */
-                if (push_event(out, &ev_cap, t, EV_ARRIVE, out->procs[i].pid, &ready) != 0) {
+                if (push_event(out, &ev_cap, t, EV_ARRIVE, out->procs[i].pid, &ready, out->procs) != 0) {
                     snprintf(err, errlen, "out of memory");
                     free(ready.arr);
                     return 1;
@@ -245,7 +246,7 @@ int simulate(const SimConfig *cfg, const Process *procs, int n,
                                 free(ready.arr);
                                 return 1;
                             }
-                            if (push_event(out, &ev_cap, t, EV_PREEMPT, out->procs[running].pid, &ready) != 0) {
+                            if (push_event(out, &ev_cap, t, EV_PREEMPT, out->procs[running].pid, &ready, out->procs) != 0) {
                                 snprintf(err, errlen, "out of memory");
                                 free(ready.arr);
                                 return 1;
@@ -270,7 +271,7 @@ int simulate(const SimConfig *cfg, const Process *procs, int n,
                         free(ready.arr);
                         return 1;
                     }
-                    if (push_event(out, &ev_cap, t, EV_PREEMPT, out->procs[running].pid, &ready) != 0) {
+                    if (push_event(out, &ev_cap, t, EV_PREEMPT, out->procs[running].pid, &ready, out->procs) != 0) {
                         snprintf(err, errlen, "out of memory");
                         free(ready.arr);
                         return 1;
@@ -321,7 +322,7 @@ int simulate(const SimConfig *cfg, const Process *procs, int n,
                     last_run     = out->procs[X].pid;
                     quantum_left = (cfg->algo == ALGO_RR) ? cfg->quantum : (1 << 30);
 
-                    if (push_event(out, &ev_cap, t, EV_DISPATCH, out->procs[X].pid, &ready) != 0) {
+                    if (push_event(out, &ev_cap, t, EV_DISPATCH, out->procs[X].pid, &ready, out->procs) != 0) {
                         snprintf(err, errlen, "out of memory");
                         free(ready.arr);
                         return 1;
@@ -343,7 +344,7 @@ int simulate(const SimConfig *cfg, const Process *procs, int n,
                 running      = cs_target;
                 quantum_left = (cfg->algo == ALGO_RR) ? cfg->quantum : (1 << 30);
                 if (push_event(out, &ev_cap, t + 1, EV_DISPATCH,
-                               out->procs[cs_target].pid, &ready) != 0) {
+                               out->procs[cs_target].pid, &ready, out->procs) != 0) {
                     snprintf(err, errlen, "out of memory");
                     free(ready.arr);
                     return 1;
@@ -376,7 +377,7 @@ int simulate(const SimConfig *cfg, const Process *procs, int n,
             }
             if (p->remaining == 0) {
                 p->completion = t + 1;
-                if (push_event(out, &ev_cap, t + 1, EV_COMPLETE, p->pid, &ready) != 0) {
+                if (push_event(out, &ev_cap, t + 1, EV_COMPLETE, p->pid, &ready, out->procs) != 0) {
                     snprintf(err, errlen, "out of memory");
                     free(ready.arr);
                     return 1;
