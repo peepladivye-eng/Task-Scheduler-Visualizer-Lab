@@ -1,6 +1,8 @@
+import React, { useEffect } from 'react'
 import { color } from './design/tokens'
 import TaskEditor from './components/TaskEditor'
 import Gantt from './components/Gantt'
+import Transport from './components/Transport'
 import { useStudio } from './store/useStudio'
 
 /** Placeholder panel — children go inside */
@@ -43,6 +45,35 @@ function Panel({
 export default function App() {
   const trace = useStudio((s) => s.trace)
   const t = useStudio((s) => s.t)
+  const playing = useStudio((s) => s.playing)
+  const speed = useStudio((s) => s.speed)
+  const tick = useStudio((s) => s.tick)
+  const toggle = useStudio((s) => s.toggle)
+  const step = useStudio((s) => s.step)
+  const seekStart = useStudio((s) => s.seekStart)
+  const seekEnd = useStudio((s) => s.seekEnd)
+
+  // Playback loop
+  useEffect(() => {
+    if (!playing) return
+    const id = setInterval(() => tick(), 500 / speed)
+    return () => clearInterval(id)
+  }, [playing, speed, tick])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
+      if (e.key === ' ')          { e.preventDefault(); toggle() }
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); step(-1) }
+      if (e.key === 'ArrowRight') { e.preventDefault(); step(1) }
+      if (e.key === 'Home')       { e.preventDefault(); seekStart() }
+      if (e.key === 'End')        { e.preventDefault(); seekEnd() }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [toggle, step, seekStart, seekEnd])
 
   return (
     <div
@@ -88,11 +119,9 @@ export default function App() {
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          color: color.muted,
-          fontSize: '0.82rem',
         }}
       >
-        [Transport — playback controls come in W9]
+        <Transport />
       </div>
 
       {/* Left rail */}
