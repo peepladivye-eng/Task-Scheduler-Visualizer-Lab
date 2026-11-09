@@ -1,263 +1,79 @@
-import React, { useEffect, useState } from 'react'
-import { color } from './design/tokens'
-import TaskEditor from './components/TaskEditor'
-import Gantt from './components/Gantt'
-import Transport from './components/Transport'
-import CpuCard from './components/CpuCard'
-import ReadyQueue from './components/ReadyQueue'
-import ProcessTable from './components/ProcessTable'
-import EventLog from './components/EventLog'
-import MetricsCards from './components/MetricsCards'
-import TopBar from './components/TopBar'
-import CompareView from './components/CompareView'
-import EngineBanner from './components/EngineBanner'
-import ScenarioBar from './components/ScenarioBar'
-import { useStudio } from './store/useStudio'
+﻿// V1 Temporary: Theme swatch test page
+import React from 'react'
 
-/** Reusable panel with optional title */
-function Panel({
-  title,
-  children,
-  className = '',
-  style: extraStyle,
-}: {
-  title?: string
-  children?: React.ReactNode
-  className?: string
-  style?: React.CSSProperties
-}) {
-  return (
-    <div
-      style={{
-        background: color.panel,
-        border: `1px solid ${color.border}`,
-        borderRadius: '10px',
-        padding: '12px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '8px',
-        ...extraStyle,
-      }}
-      className={className}
-    >
-      {title && (
-        <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: color.muted, fontWeight: 600 }}>
-          {title}
-        </div>
-      )}
-      {children}
-    </div>
-  )
-}
+const colors = [
+  { name: 'paper', class: 'bg-paper' },
+  { name: 'sheet', class: 'bg-sheet' },
+  { name: 'chip', class: 'bg-chip' },
+  { name: 'line', class: 'bg-line' },
+  { name: 'ink', class: 'bg-ink' },
+  { name: 'muted', class: 'bg-muted' },
+  { name: 'accent', class: 'bg-accent' },
+  { name: 'on-accent', class: 'bg-on-accent' },
+  { name: 'good', class: 'bg-good' },
+  { name: 'warn', class: 'bg-warn' },
+  { name: 'bad', class: 'bg-bad' },
+]
 
-/** Small floating shortcuts cheat-sheet */
-function ShortcutsPopover({ onClose }: { onClose: () => void }) {
-  const shortcuts = [
-    { key: 'Space',    desc: 'Play / Pause' },
-    { key: '←',       desc: 'Step back 1 tick' },
-    { key: '→',       desc: 'Step forward 1 tick' },
-    { key: 'Home',    desc: 'Seek to start' },
-    { key: 'End',     desc: 'Seek to end' },
-  ]
-  return (
-    /* Backdrop — clicking outside dismisses */
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-      }}
-    >
-      {/* Card — stopPropagation so clicks inside don't close */}
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          position: 'absolute',
-          bottom: '48px',
-          right: '20px',
-          background: color.raised,
-          border: `1px solid ${color.border}`,
-          borderRadius: '10px',
-          padding: '14px 16px',
-          minWidth: '220px',
-          boxShadow: '0 8px 32px #00000066',
-          zIndex: 101,
-        }}
-      >
-        <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: color.muted, fontWeight: 600, marginBottom: '10px' }}>
-          Keyboard Shortcuts
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          {shortcuts.map(({ key, desc }) => (
-            <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
-              <kbd style={{
-                background: color.panel,
-                border: `1px solid ${color.border}`,
-                borderRadius: '4px',
-                padding: '2px 7px',
-                fontFamily: '"JetBrains Mono", Consolas, monospace',
-                fontSize: '0.75rem',
-                color: color.accent,
-                whiteSpace: 'nowrap',
-              }}>
-                {key}
-              </kbd>
-              <span style={{ fontSize: '0.78rem', color: color.text }}>{desc}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )
-}
+const pidColors = [
+  { pid: 1, class: 'bg-pid1' },
+  { pid: 2, class: 'bg-pid2' },
+  { pid: 3, class: 'bg-pid3' },
+  { pid: 4, class: 'bg-pid4' },
+  { pid: 5, class: 'bg-pid5' },
+  { pid: 6, class: 'bg-pid6' },
+  { pid: 7, class: 'bg-pid7' },
+  { pid: 8, class: 'bg-pid8' },
+  { pid: 9, class: 'bg-pid9' },
+  { pid: 10, class: 'bg-pid10' },
+]
 
 export default function App() {
-  const trace     = useStudio((s) => s.trace)
-  const t         = useStudio((s) => s.t)
-  const playing   = useStudio((s) => s.playing)
-  const speed     = useStudio((s) => s.speed)
-  const tick      = useStudio((s) => s.tick)
-  const toggle    = useStudio((s) => s.toggle)
-  const step      = useStudio((s) => s.step)
-  const seekStart = useStudio((s) => s.seekStart)
-  const seekEnd   = useStudio((s) => s.seekEnd)
-  const view      = useStudio((s) => s.view)
-
-  const [showShortcuts, setShowShortcuts] = useState(false)
-
-  // Playback loop
-  useEffect(() => {
-    if (!playing) return
-    const id = setInterval(() => tick(), 500 / speed)
-    return () => clearInterval(id)
-  }, [playing, speed, tick])
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement).tagName
-      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return
-      if (e.key === '?')          { setShowShortcuts((v) => !v) }
-      if (e.key === 'Escape')     { setShowShortcuts(false) }
-      if (e.key === ' ')          { e.preventDefault(); toggle() }
-      if (e.key === 'ArrowLeft')  { e.preventDefault(); step(-1) }
-      if (e.key === 'ArrowRight') { e.preventDefault(); step(1) }
-      if (e.key === 'Home')       { e.preventDefault(); seekStart() }
-      if (e.key === 'End')        { e.preventDefault(); seekEnd() }
-    }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [toggle, step, seekStart, seekEnd])
-
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        background: color.bg,
-      }}
-    >
-      {/* TopBar */}
-      <div
-        style={{
-          background: color.panel,
-          borderBottom: `1px solid ${color.border}`,
-          padding: '10px 20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-        }}
-      >
-        <TopBar />
-      </div>
-
-      {/* Engine banner */}
-      <div style={{ padding: '0 20px' }}>
-        <EngineBanner />
-      </div>
-
-      {/* Main content column */}
-      <div
-        style={{
-          flex: '1 1 auto',
-          padding: '20px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '24px',
-        }}
-      >
-        {/* Scenario Bar */}
-        <ScenarioBar />
-
-        {/* Task Editor section */}
-        <Panel title="Task Editor">
-          <TaskEditor />
-        </Panel>
-
-        {/* Transport bar - MOVED HERE before Gantt */}
-        <div
-          style={{
-            background: color.raised,
-            border: `1px solid ${color.line}`,
-            borderRadius: '8px',
-            padding: '12px 16px',
-          }}
-        >
-          <Transport />
-        </div>
-
-        {/* Gantt Chart section */}
-        {view === 'compare' ? (
-          <Panel title="Compare">
-            <CompareView />
-          </Panel>
-        ) : (
-          <Panel title="Gantt Chart">
-            {trace
-              ? <Gantt trace={trace} t={t} />
-              : <span style={{ color: color.muted, fontSize: '0.82rem' }}>Run a simulation to see the Gantt chart.</span>}
-          </Panel>
-        )}
-
-        {/* Two-column grid: CPU+Queue | Event log */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
-            gap: '16px',
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <Panel title="CPU">
-              <CpuCard />
-            </Panel>
-            <Panel title="Ready Queue">
-              <ReadyQueue />
-            </Panel>
+    <div className="min-h-screen bg-paper p-8">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <h1 className="text-4xl font-display font-semibold text-ink">
+          Theme Swatch Test
+        </h1>
+        
+        <div className="sheet space-y-4">
+          <h2 className="text-xl font-display text-ink mb-4">Theme Colors</h2>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {colors.map(({ name, class: className }) => (
+              <div key={name} className="space-y-2">
+                <div className={`${className} h-16 rounded-lg border-2 border-line`} />
+                <p className="font-mono text-sm text-muted">{name}</p>
+              </div>
+            ))}
           </div>
-
-          <Panel title="Event Log">
-            <EventLog />
-          </Panel>
         </div>
 
-        {/* Process Table section */}
-        <Panel title="Process Table">
-          <ProcessTable />
-        </Panel>
+        <div className="sheet space-y-4">
+          <h2 className="text-xl font-display text-ink mb-4">PID Colors</h2>
+          <div className="grid grid-cols-5 md:grid-cols-10 gap-3">
+            {pidColors.map(({ pid, class: className }) => (
+              <div key={pid} className="flex flex-col items-center gap-2">
+                <div className={`${className} w-12 h-12 rounded-lg border-2 border-pidInk flex items-center justify-center text-pidInk font-mono font-semibold text-sm`}>
+                  P{pid}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
-        {/* Metrics section */}
-        <Panel title="Metrics">
-          <MetricsCards />
-        </Panel>
+        <div className="sheet">
+          <p className="text-sm text-muted">
+            Toggle theme in DevTools: Open Console and run{' '}
+            <code className="bg-chip px-2 py-1 rounded font-mono text-xs">
+              document.documentElement.dataset.theme = 'dark'
+            </code>{' '}
+            or{' '}
+            <code className="bg-chip px-2 py-1 rounded font-mono text-xs">
+              'light'
+            </code>
+          </p>
+        </div>
       </div>
-
-      {/* Keyboard shortcuts popover (portal-style, fixed position) */}
-      {showShortcuts && (
-        <ShortcutsPopover onClose={() => setShowShortcuts(false)} />
-      )}
     </div>
   )
 }

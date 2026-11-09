@@ -1,4 +1,4 @@
-@import '@fontsource/fraunces/400.css';
+﻿@import '@fontsource/fraunces/400.css';
 @import '@fontsource/fraunces/600.css';
 @import '@fontsource/inter/400.css';
 @import '@fontsource/inter/500.css';
@@ -10,7 +10,68 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base overrides for V2 lab notebook theme */
+/* V3 Theme System: CSS Variables (space-separated RGB for Tailwind opacity) */
+:root[data-theme="light"] {
+  --paper: 245 241 232;
+  --sheet: 255 253 248;
+  --chip: 239 233 217;
+  --line: 217 210 192;
+  --ink: 29 27 22;
+  --muted: 95 90 78;
+  --accent: 43 58 143;
+  --on-accent: 255 255 255;
+  --good: 23 121 79;
+  --warn: 199 119 0;
+  --bad: 192 57 43;
+  --hatch: 29 27 22;
+  --hatch-a: 0.14;
+  --shadow: 29 27 22;
+  --shadow-a: 0.12;
+}
+
+:root[data-theme="dark"] {
+  --paper: 21 20 15;
+  --sheet: 30 28 22;
+  --chip: 42 39 32;
+  --line: 58 55 46;
+  --ink: 236 231 218;
+  --muted: 168 162 145;
+  --accent: 169 184 255;
+  --on-accent: 21 20 15;
+  --good: 95 217 164;
+  --warn: 240 170 60;
+  --bad: 255 123 110;
+  --hatch: 255 255 255;
+  --hatch-a: 0.12;
+  --shadow: 0 0 0;
+  --shadow-a: 0.5;
+}
+
+/* Accent color overrides */
+[data-accent="teal"][data-theme="light"] {
+  --accent: 15 118 110;
+}
+[data-accent="teal"][data-theme="dark"] {
+  --accent: 94 234 212;
+}
+[data-accent="violet"][data-theme="light"] {
+  --accent: 109 40 217;
+}
+[data-accent="violet"][data-theme="dark"] {
+  --accent: 196 181 253;
+}
+[data-accent="amber"][data-theme="light"] {
+  --accent: 180 83 9;
+}
+[data-accent="amber"][data-theme="dark"] {
+  --accent: 252 211 77;
+}
+
+/* Constant PID colors (same in both themes) */
+:root {
+  --pid-ink: 21 20 15;
+}
+
 @layer base {
   *, *::before, *::after {
     box-sizing: border-box;
@@ -23,58 +84,80 @@
   }
 
   body {
-    background-color: #f5f1e8; /* paper */
-    color: #1d1b16; /* ink */
+    background-color: rgb(var(--paper));
+    color: rgb(var(--ink));
     font-family: Inter, system-ui, sans-serif;
     font-size: 14px;
     line-height: 1.5;
   }
 
-  /* Tabular numbers for all mono text */
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+  }
+
+  ::selection {
+    background-color: rgb(var(--accent) / 0.3);
+    color: rgb(var(--ink));
+  }
+
   .font-mono {
     font-variant-numeric: tabular-nums;
   }
 }
 
-/* Component layer: reusable sheet and utility classes */
 @layer components {
-  /* Sheet component: white sections with ink border and shadow */
   .sheet {
-    background: #fffdf8;
-    border: 1.5px solid #1d1b16;
+    background: rgb(var(--sheet));
+    border: 1.5px solid rgb(var(--line));
     border-radius: 10px;
-    box-shadow: 3px 3px 0 rgba(29, 27, 22, 0.12);
+    box-shadow: 3px 3px 0 rgb(var(--shadow) / var(--shadow-a));
     padding: 20px;
   }
 
-  /* Grid paper background pattern (subtle) */
   .grid-paper {
     background-image: 
-      linear-gradient(rgba(217, 210, 192, 0.3) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(217, 210, 192, 0.3) 1px, transparent 1px);
+      linear-gradient(rgb(var(--line) / 0.3) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(var(--line) / 0.3) 1px, transparent 1px);
     background-size: 20px 20px;
   }
 
-  /* Idle segment hatch pattern (diagonal grey) */
   .hatch-idle {
     background-image: repeating-linear-gradient(
       45deg,
       transparent,
       transparent 4px,
-      rgba(107, 102, 92, 0.15) 4px,
-      rgba(107, 102, 92, 0.15) 8px
+      rgb(var(--hatch) / var(--hatch-a)) 4px,
+      rgb(var(--hatch) / var(--hatch-a)) 8px
     );
   }
 
-  /* Context switch hatch pattern (diagonal red/warn) */
   .hatch-cs {
-    background-color: #c77700;
+    background: rgb(var(--warn));
     background-image: repeating-linear-gradient(
       45deg,
       transparent,
       transparent 3px,
-      rgba(255, 255, 255, 0.3) 3px,
-      rgba(255, 255, 255, 0.3) 6px
+      rgb(var(--bad) / 0.25) 3px,
+      rgb(var(--bad) / 0.25) 6px
     );
   }
+}
+
+/* View Transitions API support */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
 }
