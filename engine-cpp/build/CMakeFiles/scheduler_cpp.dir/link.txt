@@ -1,0 +1,1 @@
+/usr/bin/c++ -g CMakeFiles/scheduler_cpp.dir/src/parser/input_parser.cpp.o CMakeFiles/scheduler_cpp.dir/src/scheduler/simulation.cpp.o CMakeFiles/scheduler_cpp.dir/src/metrics/metrics.cpp.o CMakeFiles/scheduler_cpp.dir/src/trace/trace_writer.cpp.o CMakeFiles/scheduler_cpp.dir/src/main.cpp.o -o "/mnt/c/Users/Lenovo/Desktop/Divye/NSUT/OS project/bin/scheduler_cpp" 

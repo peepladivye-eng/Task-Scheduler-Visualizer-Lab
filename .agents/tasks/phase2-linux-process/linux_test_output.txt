@@ -1,0 +1,54 @@
+===== cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug =====
+-- The CXX compiler identification is GNU 15.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (5.0s)
+-- Generating done (1.1s)
+-- Build files have been written to: /mnt/c/Users/Lenovo/Desktop/Divye/NSUT/OS project/engine-cpp/build
+===== cmake --build build --parallel =====
+[ 17%] Building CXX object CMakeFiles/run_linux_tests.dir/tests/test_linux_process.cpp.o
+[ 23%] Building CXX object CMakeFiles/run_tests.dir/tests/test_main.cpp.o
+[ 47%] Building CXX object CMakeFiles/run_linux_tests.dir/src/ipc/pipe_manager.cpp.o
+[ 58%] Building CXX object CMakeFiles/run_linux_tests.dir/src/process/child_worker.cpp.o
+[ 82%] Building CXX object CMakeFiles/scheduler_cpp.dir/src/parser/input_parser.cpp.o
+[ 82%] Building CXX object CMakeFiles/scheduler_cpp.dir/src/scheduler/simulation.cpp.o
+[ 82%] Building CXX object CMakeFiles/run_tests.dir/src/metrics/metrics.cpp.o
+[ 82%] Building CXX object CMakeFiles/scheduler_cpp.dir/src/main.cpp.o
+[ 82%] Building CXX object CMakeFiles/scheduler_cpp.dir/src/metrics/metrics.cpp.o
+[ 82%] Building CXX object CMakeFiles/run_linux_tests.dir/src/process/process_manager.cpp.o
+[ 82%] Building CXX object CMakeFiles/run_tests.dir/src/scheduler/simulation.cpp.o
+[ 82%] Building CXX object CMakeFiles/run_tests.dir/src/parser/input_parser.cpp.o
+[ 82%] Building CXX object CMakeFiles/scheduler_cpp.dir/src/trace/trace_writer.cpp.o
+[ 82%] Building CXX object CMakeFiles/run_tests.dir/src/trace/trace_writer.cpp.o
+[ 88%] Linking CXX executable run_linux_tests
+[ 94%] Linking CXX executable "/mnt/c/Users/Lenovo/Desktop/Divye/NSUT/OS project/bin/scheduler_cpp"
+[100%] Linking CXX executable "/mnt/c/Users/Lenovo/Desktop/Divye/NSUT/OS project/bin/run_tests"
+[100%] Built target run_linux_tests
+[100%] Built target run_tests
+[100%] Built target scheduler_cpp
+===== ./build/run_linux_tests =====
+--- create one worker ---
+  PASS: create_worker returns a positive pid
+  PASS: worker os_pid differs from parent pid
+  PASS: get_os_pid matches the returned pid
+--- create three distinct workers ---
+  PASS: all three worker pids are positive
+  PASS: worker 1 pid != worker 2 pid
+  PASS: worker 1 pid != worker 3 pid
+  PASS: worker 2 pid != worker 3 pid
+--- execute units ---
+  PASS: send_execute returns after receiving UNITS_DONE
+--- terminate leaves no zombie ---
+  PASS: terminate_worker returns without error
+  PASS: no /proc/<pid> entry remains after reaping
+  PASS: waitpid after reaping returns -1 (nothing to reap)
+--- shutdown_all leaves no zombies ---
+  PASS: no /proc/<pid> entry remains after shutdown_all
+--- fork failure handling (documented) ---
+  DOC: on fork() < 0, create_worker throws and RAII closes the pipes (manual verification)
+  PASS: shutdown_all on an empty registry is a safe no-op
+
+13 passed, 0 failed
