@@ -25,6 +25,10 @@ interface StudioState {
   playing: boolean
   speed: Speed
 
+  // Live mode (fork real child processes — Linux/WSL2 only)
+  liveMode: boolean
+  liveModeAvailable: boolean   // set by /api/health response
+
   // Status (new reactive pipeline states)
   sim: 'idle' | 'working' | 'fresh' | 'invalid' | 'error'
   problems: InputProblem[]
@@ -43,6 +47,7 @@ interface StudioActions {
   run: () => Promise<void>
   setView: (v: 'single' | 'compare') => void
   setT: (t: number) => void
+  setLiveMode: (v: boolean) => void
   play: () => void
   pause: () => void
   toggle: () => void
@@ -116,6 +121,7 @@ export const useStudio = create<StudioStore>((set, get) => {
           algo,
           ...(algo === 'rr' ? { quantum } : {}),
           contextSwitch,
+          live: get().liveMode,
         }
         const result = await runSimulation(req, signal)
         // Check if this result is still current
@@ -156,6 +162,8 @@ export const useStudio = create<StudioStore>((set, get) => {
     t: 0,
     playing: false,
     speed: 1,
+    liveMode: false,
+    liveModeAvailable: false,
     sim: 'fresh', // Start with preset loaded
     problems: [],
     runSeq: 0,
@@ -210,6 +218,11 @@ export const useStudio = create<StudioStore>((set, get) => {
 
     setView: (view) => {
       set({ view })
+      scheduleRun()
+    },
+
+    setLiveMode: (v) => {
+      set({ liveMode: v })
       scheduleRun()
     },
 
@@ -277,6 +290,14 @@ export const useStudio = create<StudioStore>((set, get) => {
     checkEngine: async () => {
       const online = await pingEngine()
       set({ engineOnline: online })
+      // Also check if live mode is available (Linux C++ engine)
+      try {
+        const h = await fetch('/api/health')
+        if (h.ok) {
+          const info = await h.json() as { live_mode_supported?: boolean }
+          set({ liveModeAvailable: !!info.live_mode_supported })
+        }
+      } catch { /* ignore */ }
     },
 
     setError: (error) => set({ error, status: error === null ? 'idle' : 'error', sim: error === null ? 'fresh' : 'error' }),

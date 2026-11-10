@@ -22,13 +22,24 @@ void write_trace_json(std::FILE* f, const SimResult& r, const Metrics& m) {
     for (std::size_t i = 0; i < r.processes.size(); ++i) {
         const auto& p = r.processes[i];
         if (i > 0) std::fprintf(f, ",");
-        std::fprintf(f,
-            "\n    {\"pid\":%d,\"arrival\":%d,\"burst\":%d,"
-            "\"priority\":%d,\"start\":%d,\"completion\":%d,"
-            "\"waiting\":%d,\"turnaround\":%d,\"response\":%d}",
-            p.pid, p.arrival, p.burst, p.priority,
-            p.start, p.completion,
-            p.waiting, p.turnaround, p.response);
+        // os_pid: null when -1 (simulate mode), integer when fork() succeeded
+        if (p.os_pid >= 0) {
+            std::fprintf(f,
+                "\n    {\"pid\":%d,\"arrival\":%d,\"burst\":%d,"
+                "\"priority\":%d,\"os_pid\":%d,\"start\":%d,\"completion\":%d,"
+                "\"waiting\":%d,\"turnaround\":%d,\"response\":%d}",
+                p.pid, p.arrival, p.burst, p.priority, p.os_pid,
+                p.start, p.completion,
+                p.waiting, p.turnaround, p.response);
+        } else {
+            std::fprintf(f,
+                "\n    {\"pid\":%d,\"arrival\":%d,\"burst\":%d,"
+                "\"priority\":%d,\"os_pid\":null,\"start\":%d,\"completion\":%d,"
+                "\"waiting\":%d,\"turnaround\":%d,\"response\":%d}",
+                p.pid, p.arrival, p.burst, p.priority,
+                p.start, p.completion,
+                p.waiting, p.turnaround, p.response);
+        }
     }
     std::fprintf(f, "\n  ],\n");
 

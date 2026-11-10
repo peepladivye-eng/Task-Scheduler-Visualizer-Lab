@@ -38,6 +38,7 @@ export interface ProcResult {
   arrival: number
   burst: number
   priority: number
+  os_pid: number | null   // actual Linux PID from fork(); null in simulate mode
   start: number
   completion: number
   waiting: number
@@ -87,4 +88,5 @@ export interface RunRequest {
   algo: Algo | 'compare'
   quantum?: number
   contextSwitch?: number
+  live?: boolean   // true = fork real child workers (Linux only)
 }

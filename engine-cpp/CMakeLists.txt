@@ -17,6 +17,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/../bin")
 set(ENGINE_CORE_SOURCES
     src/parser/input_parser.cpp
     src/scheduler/simulation.cpp
+    src/scheduler/execution_controller.cpp
     src/metrics/metrics.cpp
     src/trace/trace_writer.cpp
 )

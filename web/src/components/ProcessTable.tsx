@@ -60,6 +60,7 @@ export default function ProcessTable() {
         <thead>
           <tr>
             <th style={TH_STYLE} title="Process ID">PID</th>
+            <th style={{ ...TH_STYLE, color: 'rgb(var(--accent))' }} title="Actual Linux OS PID from fork()">OS PID</th>
             <th style={{ ...TH_STYLE, ...MONO }} title="Arrival time">Arr</th>
             <th style={{ ...TH_STYLE, ...MONO }} title="Burst time">Burst</th>
             <th style={{ ...TH_STYLE, ...MONO }} title="Priority">Pri</th>
@@ -104,8 +105,14 @@ export default function ProcessTable() {
                     <span style={{ ...MONO, color: pc, fontWeight: 600 }}>P{proc.pid}</span>
                   </div>
                 </td>
-                <td style={{ ...TD_STYLE, ...MONO }}>{proc.arrival}</td>
-                <td style={{ ...TD_STYLE, ...MONO }}>{proc.burst}</td>
+                {/* OS PID — real Linux PID from fork(), or — in simulate mode */}
+                <td style={{ ...TD_STYLE, ...MONO, fontSize: '0.72rem' }}>
+                  {proc.os_pid != null && proc.os_pid > 0
+                    ? <span style={{ color: 'rgb(var(--good))', fontWeight: 600 }}>{proc.os_pid}</span>
+                    : <span style={{ color: color.muted }}>—</span>
+                  }
+                </td>
+                <td style={{ ...TD_STYLE, ...MONO }}>{proc.arrival}</td>                <td style={{ ...TD_STYLE, ...MONO }}>{proc.burst}</td>
                 <td style={{ ...TD_STYLE, ...MONO }}>{proc.priority}</td>
                 {/* Status badge */}
                 <td style={TD_STYLE}>
