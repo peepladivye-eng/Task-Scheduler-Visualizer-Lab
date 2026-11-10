@@ -1,239 +1,240 @@
 ﻿import React, { useRef, useEffect, useState } from 'react'
-import { motion, useReducedMotion } from 'framer-motion'
 import { useStudio } from '../store/useStudio'
 import { useFocus, focusProps, dimClass } from '../store/useFocus'
 import { makeScale } from '../lib/timeScale'
 import { totalTime } from '../lib/deriveState'
 import type { Trace } from '../types/trace'
 
-/* Contract PID_COLORS: pid1→index0, etc. */
+/* Contract: pid1 → index0 */
 const PID_COLORS = [
   '#6ea8fe', '#3ddc97', '#ffb454', '#ff6b9d', '#b794f6',
   '#4fd1c5', '#f6e05e', '#fc8181', '#90cdf4', '#a3e635',
 ]
-function pidColor(pid: number) { return PID_COLORS[(pid - 1) % 10] }
+const pidColor = (pid: number) => PID_COLORS[(pid - 1) % 10]
 
-const LABEL_W = 130  // px — sticky left column
+const LABEL_W = 130
 
-interface WorkbenchProps {
-  trace: Trace
-  t: number
-}
+interface Props { trace: Trace; t: number }
 
-export default function Workbench({ trace, t }: WorkbenchProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [containerWidth, setContainerWidth] = useState(900)
-  const reducedMotion = useReducedMotion()
-  const speed = useStudio((s) => s.speed)
+export default function Workbench({ trace, t }: Props) {
+  const outerRef = useRef<HTMLDivElement>(null)
+  const [outerW, setOuterW] = useState(1000)
+  const speed    = useStudio((s) => s.speed)
   const focusPid = useFocus((s) => s.pid)
 
-  /* Measure the outer container so the scale stays correct */
   useEffect(() => {
-    const el = containerRef.current
+    const el = outerRef.current
     if (!el) return
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width
-      if (w && w > 100) setContainerWidth(w)
+    const ro = new ResizeObserver(([e]) => {
+      const w = e.contentRect.width
+      if (w > 200) setOuterW(w)
     })
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
 
-  const total = totalTime(trace)
-  /* Pass labelWidth so xFor() returns proper pixel positions */
-  const scale = makeScale(total, containerWidth, LABEL_W)
+  const total  = totalTime(trace)
+  const scale  = makeScale(total, outerW, LABEL_W)
   const { ppt, xFor, widthFor, totalWidth } = scale
 
-  /* Duration of one-tick animation in seconds */
-  const tickDur = reducedMotion ? 0 : (500 / speed) / 1000
+  /* CSS transition duration for fills */
+  const dur = `${(500 / speed) / 1000}s`
 
-  const processList = [...trace.processes].sort((a, b) => a.pid - b.pid)
+  const procs = [...trace.processes].sort((a, b) => a.pid - b.pid)
 
-  /* Ruler ticks: show every tick if ppt>=20, else every 5 */
+  /* Ruler: tick every 1 when ppt>=24, every 5 otherwise */
+  const rulerStep = ppt >= 24 ? 1 : 5
   const rulerTicks: number[] = []
-  for (let i = 0; i <= total; i++) {
-    if (ppt >= 20 || i % 5 === 0) rulerTicks.push(i)
-  }
+  for (let i = 0; i <= total; i += rulerStep) rulerTicks.push(i)
 
   return (
     <div className="sheet p-0 overflow-hidden">
-      <div className="p-4 overflow-x-auto" ref={containerRef}>
-        {/* Fixed-width inner so the scroll works */}
-        <div style={{ width: totalWidth, minWidth: totalWidth }}>
+      {/* grid-paper background */}
+      <div className="grid-paper" ref={outerRef}>
+        <div
+          className="relative"
+          style={{ width: totalWidth, minWidth: totalWidth, paddingTop: 8, paddingBottom: 8 }}
+        >
 
-          {/* ── Ruler ─────────────────────────────────────────── */}
-          <div className="relative h-8 border-b border-line" style={{ marginLeft: LABEL_W }}>
+          {/* ── Ruler ── */}
+          <div
+            className="relative h-7 border-b border-line mb-1"
+            style={{ marginLeft: LABEL_W }}
+          >
             {rulerTicks.map((tick) => {
-              const x = xFor(tick) - LABEL_W   /* relative to timeline area */
+              const x = xFor(tick) - LABEL_W
               return (
-                <div key={tick} className="absolute top-0" style={{ left: x }}>
-                  <div className="w-px h-2 bg-line" />
-                  <div className="absolute top-2 left-0 -translate-x-1/2 font-mono text-[10px] text-muted select-none">
+                <React.Fragment key={tick}>
+                  <div className="absolute top-0 bottom-0 w-px bg-line/60" style={{ left: x }} />
+                  <div
+                    className="absolute top-1 font-mono text-[10px] text-muted select-none"
+                    style={{ left: x, transform: 'translateX(-50%)' }}
+                  >
                     {tick}
                   </div>
-                </div>
+                </React.Fragment>
               )
             })}
           </div>
 
-          {/* ── Process rows ──────────────────────────────────── */}
-          {processList.map((proc) => {
-            const color = pidColor(proc.pid)
-            const runSegs = trace.timeline.filter(
-              (s) => s.type === 'run' && s.pid === proc.pid
-            )
+          {/* ── Per-process rows ── */}
+          {procs.map((proc) => {
+            const color   = pidColor(proc.pid)
+            const runSegs = trace.timeline.filter(s => s.type === 'run' && s.pid === proc.pid)
 
             return (
               <div
                 key={proc.pid}
-                className={`relative h-12 border-b border-line/40 flex items-center ${dimClass(focusPid, proc.pid)}`}
+                className={`relative h-11 border-b border-line/30 ${dimClass(focusPid, proc.pid)}`}
                 {...focusProps(proc.pid)}
               >
                 {/* Label */}
                 <div
-                  className="absolute left-0 top-0 bottom-0 flex items-center gap-2 px-2"
+                  className="absolute left-0 inset-y-0 flex items-center gap-1.5 px-2"
                   style={{ width: LABEL_W }}
                 >
-                  <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: color }} />
+                  <div
+                    className="w-2 h-2 rounded-sm flex-shrink-0"
+                    style={{ background: color }}
+                  />
                   <div>
-                    <div className="font-mono font-semibold text-sm text-ink leading-none">P{proc.pid}</div>
-                    <div className="font-mono text-[10px] text-muted leading-none mt-0.5">
-                      {proc.arrival} · {proc.burst}
+                    <div className="font-mono font-bold text-xs text-ink leading-none">P{proc.pid}</div>
+                    <div className="font-mono text-[9px] text-muted leading-none mt-0.5">
+                      a={proc.arrival} b={proc.burst}
                     </div>
                   </div>
                 </div>
 
-                {/* Timeline area */}
-                <div className="absolute inset-y-0" style={{ left: LABEL_W, right: 0 }}>
-                  {/* Arrival marker */}
-                  <div
-                    className="absolute top-0 bottom-0 w-px bg-muted/40"
-                    style={{ left: xFor(proc.arrival) - LABEL_W }}
-                  />
+                {/* Arrival line */}
+                <div
+                  className="absolute inset-y-0 w-px bg-muted/30"
+                  style={{ left: xFor(proc.arrival) }}
+                />
 
-                  {/* Run segments */}
-                  {runSegs.map((seg, i) => {
-                    const left = xFor(seg.t_start) - LABEL_W
-                    const width = widthFor(seg.t_end - seg.t_start)
-                    /* How far the playhead has crossed this segment: 0..1 */
-                    const fill = seg.t_start >= t ? 0
-                      : Math.min(1, (t - seg.t_start) / (seg.t_end - seg.t_start))
+                {/* Run segments */}
+                {runSegs.map((seg, i) => {
+                  const left  = xFor(seg.t_start)
+                  const width = widthFor(seg.t_end - seg.t_start)
+                  const fill  = t <= seg.t_start ? 0
+                    : t >= seg.t_end ? 1
+                    : (t - seg.t_start) / (seg.t_end - seg.t_start)
 
-                    return (
+                  return (
+                    <div
+                      key={i}
+                      className="absolute rounded overflow-hidden"
+                      style={{ left, width, top: 6, bottom: 6 }}
+                    >
+                      {/* ghost */}
                       <div
-                        key={i}
-                        className="absolute top-2 bottom-2 overflow-hidden rounded"
-                        style={{ left, width }}
+                        className="absolute inset-0 rounded"
+                        style={{ border: `2px solid ${color}`, opacity: 0.3 }}
+                      />
+                      {/* fill — plain CSS transition */}
+                      <div
+                        className="absolute inset-y-0 left-0 rounded flex items-center overflow-hidden"
+                        style={{
+                          width: `${fill * 100}%`,
+                          background: color,
+                          transition: `width ${dur} linear`,
+                          minWidth: fill > 0 ? 2 : 0,
+                        }}
                       >
-                        {/* Ghost outline — always visible */}
-                        <div
-                          className="absolute inset-0 rounded border-2 opacity-30"
-                          style={{ borderColor: color }}
-                        />
-                        {/* Animated fill */}
-                        <motion.div
-                          className="absolute inset-y-0 left-0 rounded flex items-center justify-center overflow-hidden"
-                          animate={{ width: `${fill * 100}%` }}
-                          transition={fill === 0 ? { duration: 0 } : { duration: tickDur, ease: 'linear' }}
-                          style={{ backgroundColor: color }}
+                        <span
+                          className="font-mono font-bold text-[9px] px-1 whitespace-nowrap"
+                          style={{ color: '#0b0f17' }}
                         >
-                          <span
-                            className="font-mono text-[10px] font-bold whitespace-nowrap px-1"
-                            style={{ color: '#0b0f17' }}
-                          >
-                            P{proc.pid}
-                          </span>
-                        </motion.div>
+                          P{proc.pid}
+                        </span>
                       </div>
-                    )
-                  })}
-                </div>
+                    </div>
+                  )
+                })}
               </div>
             )
           })}
 
-          {/* ── CPU row ───────────────────────────────────────── */}
-          <div className="relative h-12 flex items-center">
+          {/* ── CPU row ── */}
+          <div className="relative h-11 mt-1">
             {/* Label */}
             <div
-              className="absolute left-0 top-0 bottom-0 flex items-center px-2"
+              className="absolute left-0 inset-y-0 flex items-center px-2"
               style={{ width: LABEL_W }}
             >
-              <span className="font-mono font-semibold text-sm text-ink">CPU</span>
+              <span className="font-mono font-bold text-xs text-ink">CPU</span>
             </div>
 
-            {/* Timeline area */}
-            <div className="absolute inset-y-0" style={{ left: LABEL_W, right: 0 }}>
-              {trace.timeline.map((seg, i) => {
-                const left = xFor(seg.t_start) - LABEL_W
-                const width = widthFor(seg.t_end - seg.t_start)
-                const fill = seg.t_start >= t ? 0
-                  : Math.min(1, (t - seg.t_start) / (seg.t_end - seg.t_start))
+            {/* Segments */}
+            {trace.timeline.map((seg, i) => {
+              const left  = xFor(seg.t_start)
+              const width = widthFor(seg.t_end - seg.t_start)
+              const fill  = t <= seg.t_start ? 0
+                : t >= seg.t_end ? 1
+                : (t - seg.t_start) / (seg.t_end - seg.t_start)
 
-                if (seg.type === 'idle') {
-                  return (
+              if (seg.type === 'idle') {
+                return (
+                  <div
+                    key={i}
+                    className="absolute hatch-idle rounded flex items-center justify-center"
+                    style={{ left, width, top: 4, bottom: 4 }}
+                  >
+                    <span className="font-mono text-[9px] text-muted">idle</span>
+                  </div>
+                )
+              }
+
+              if (seg.type === 'context_switch' && seg.pid !== null) {
+                return (
+                  <div
+                    key={i}
+                    className="absolute hatch-cs rounded flex items-center justify-center"
+                    style={{ left, width, top: 4, bottom: 4 }}
+                  >
+                    <span className="font-mono text-[9px] font-bold text-ink">CS</span>
+                  </div>
+                )
+              }
+
+              if (seg.type === 'run' && seg.pid !== null) {
+                const color = pidColor(seg.pid)
+                return (
+                  <div
+                    key={i}
+                    className="absolute rounded overflow-hidden"
+                    style={{ left, width, top: 4, bottom: 4 }}
+                  >
                     <div
-                      key={i}
-                      className="absolute top-2 bottom-2 rounded hatch-idle flex items-center justify-center"
-                      style={{ left, width }}
-                    >
-                      <span className="font-mono text-[10px] text-muted">idle</span>
-                    </div>
-                  )
-                }
-
-                if (seg.type === 'context_switch' && seg.pid !== null) {
-                  return (
+                      className="absolute inset-0 rounded"
+                      style={{ border: `1px solid ${color}`, opacity: 0.25 }}
+                    />
                     <div
-                      key={i}
-                      className="absolute top-2 bottom-2 rounded hatch-cs flex items-center justify-center"
-                      style={{ left, width }}
-                    >
-                      <span className="font-mono text-[10px] font-semibold text-warn">CS</span>
-                    </div>
-                  )
-                }
-
-                if (seg.type === 'run' && seg.pid !== null) {
-                  const color = pidColor(seg.pid)
-                  return (
-                    <div
-                      key={i}
-                      className="absolute top-2 bottom-2 overflow-hidden rounded"
-                      style={{ left, width }}
-                    >
-                      {/* ghost */}
-                      <div
-                        className="absolute inset-0 rounded border opacity-20"
-                        style={{ borderColor: color }}
-                      />
-                      {/* fill */}
-                      <motion.div
-                        className="absolute inset-y-0 left-0 rounded"
-                        animate={{ width: `${fill * 100}%` }}
-                        transition={fill === 0 ? { duration: 0 } : { duration: tickDur, ease: 'linear' }}
-                        style={{ backgroundColor: color }}
-                      />
-                    </div>
-                  )
-                }
-
-                return null
-              })}
-            </div>
+                      className="absolute inset-y-0 left-0 rounded"
+                      style={{
+                        width: `${fill * 100}%`,
+                        background: color,
+                        transition: `width ${dur} linear`,
+                        minWidth: fill > 0 ? 2 : 0,
+                      }}
+                    />
+                  </div>
+                )
+              }
+              return null
+            })}
           </div>
 
-          {/* ── Playhead ──────────────────────────────────────── */}
-          <motion.div
+          {/* ── Playhead ── */}
+          <div
             className="absolute top-0 bottom-0 w-0.5 pointer-events-none z-10"
             style={{
               left: xFor(t),
-              backgroundColor: 'rgb(var(--accent))',
-              boxShadow: '0 0 8px rgb(var(--accent) / 0.5)',
+              background: 'rgb(var(--accent))',
+              boxShadow: '0 0 6px rgb(var(--accent) / 0.6)',
+              transition: `left ${dur} linear`,
             }}
-            animate={{ left: xFor(t) }}
-            transition={reducedMotion ? { duration: 0 } : { duration: tickDur, ease: 'linear' }}
           />
+
         </div>
       </div>
     </div>

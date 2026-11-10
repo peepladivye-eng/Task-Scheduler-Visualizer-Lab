@@ -1,29 +1,28 @@
-import React from 'react'
+﻿import React from 'react'
+import { motion } from 'framer-motion'
 import { useStudio } from '../store/useStudio'
-import { ALGO_ORDER, ALGO_LABEL } from '../types/trace'
-import { color } from '../design/tokens'
-import { fmt, fmtMs } from '../lib/format'
+import { ALGO_ORDER, ALGO_LABEL, type Metrics } from '../types/trace'
+import { fmtMs, fmtPct, fmt } from '../lib/format'
 
-// Metric definitions for the bar charts
-const CHART_METRICS = [
-  { key: 'avg_waiting',     label: 'Avg Waiting',     unit: 'ms',      higherBetter: false },
-  { key: 'avg_turnaround',  label: 'Avg Turnaround',  unit: 'ms',      higherBetter: false },
-  { key: 'avg_response',    label: 'Avg Response',    unit: 'ms',      higherBetter: false },
-  { key: 'context_switches',label: 'Context Switches',unit: '',        higherBetter: false },
-] as const
+/* One color per algo in ALGO_ORDER */
+const ALGO_COLORS = ['#6ea8fe', '#3ddc97', '#ffb454', '#ff6b9d', '#b794f6', '#fc8181']
 
-const TABLE_METRICS = [
-  { key: 'avg_waiting',     label: 'Avg Wait',         format: fmtMs },
-  { key: 'avg_turnaround',  label: 'Avg TAT',          format: fmtMs },
-  { key: 'avg_response',    label: 'Avg Response',     format: fmtMs },
-  { key: 'cpu_utilization', label: 'CPU %',            format: (n: number) => fmt(n) + '%' },
-  { key: 'throughput',      label: 'Throughput',       format: (n: number) => fmt(n) },
-  { key: 'context_switches',label: 'CS Count',         format: (n: number) => String(n) },
-] as const
+/* Bar charts — four metrics, lower is better */
+const BAR_METRICS: { key: keyof Metrics; label: string; higherBetter?: boolean }[] = [
+  { key: 'avg_waiting',      label: 'Avg Waiting (ms)' },
+  { key: 'avg_turnaround',   label: 'Avg Turnaround (ms)' },
+  { key: 'avg_response',     label: 'Avg Response (ms)' },
+  { key: 'context_switches', label: 'Context Switches' },
+]
 
-// One color per algo, aligned to ALGO_ORDER
-const BAR_COLORS = [
-  '#6ea8fe', '#3ddc97', '#ffb454', '#ff6b9d', '#b794f6', '#fc8181',
+/* Table columns */
+const TABLE_COLS: { key: keyof Metrics; label: string; fmt: (v: number) => string; higherBetter?: boolean }[] = [
+  { key: 'avg_waiting',      label: 'Avg Wait',    fmt: fmtMs },
+  { key: 'avg_turnaround',   label: 'Avg TAT',     fmt: fmtMs },
+  { key: 'avg_response',     label: 'Avg Response', fmt: fmtMs },
+  { key: 'cpu_utilization',  label: 'CPU %',       fmt: (v) => fmt(v) + ' %', higherBetter: true },
+  { key: 'throughput',       label: 'Throughput',  fmt: (v) => fmt(v, 4),     higherBetter: true },
+  { key: 'context_switches', label: 'CS',          fmt: (v) => String(v) },
 ]
 
 export default function CompareView() {
@@ -31,8 +30,8 @@ export default function CompareView() {
 
   if (!compare || compare.runs.length !== 6) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px', color: color.muted, fontSize: '0.88rem' }}>
-        Run "Compare All" to see results here.
+      <div className="sheet flex items-center justify-center min-h-[200px]">
+        <p className="text-muted text-sm">Switch to <strong className="text-ink">Compare All</strong> mode to see results.</p>
       </div>
     )
   }
@@ -40,85 +39,42 @@ export default function CompareView() {
   const runs = compare.runs
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' }}>
-      {/* Bar charts grid — 2 columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
-        {CHART_METRICS.map((metric) => {
-          const values = runs.map((r) => r.metrics[metric.key as keyof typeof r.metrics] as number)
+    <div className="space-y-5">
+
+      {/* ── Bar charts ── */}
+      <div className="grid grid-cols-2 gap-4">
+        {BAR_METRICS.map((metric) => {
+          const values = runs.map((r) => r.metrics[metric.key] as number)
           const best   = metric.higherBetter ? Math.max(...values) : Math.min(...values)
-          const maxVal = Math.max(...values)
+          const maxVal = Math.max(...values, 0.001)   /* avoid div/0 */
 
           return (
-            <div
-              key={metric.key}
-              style={{
-                background: color.raised,
-                border: `1px solid ${color.border}`,
-                borderRadius: '8px',
-                padding: '12px',
-              }}
-            >
-              {/* Chart header */}
-              <div style={{
-                fontSize: '0.72rem',
-                textTransform: 'uppercase',
-                letterSpacing: '0.06em',
-                color: color.muted,
-                marginBottom: '10px',
-                fontWeight: 600,
-              }}>
-                {metric.label}{metric.unit ? ` (${metric.unit})` : ''} — lower is better
+            <div key={metric.key} className="sheet space-y-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-muted">
+                {metric.label} — {metric.higherBetter ? 'higher' : 'lower'} is better
               </div>
 
-              {/* Bars */}
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: '6px', height: '80px' }}>
+              <div className="flex items-end gap-2 h-20">
                 {values.map((val, i) => {
-                  const isBest    = val === best
-                  const barHeight = maxVal > 0 ? (val / maxVal) * 100 : 0
+                  const isBest  = val === best
+                  const pct     = (val / maxVal) * 100
                   return (
                     <div
                       key={ALGO_ORDER[i]}
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '3px',
-                        height: '100%',
-                        justifyContent: 'flex-end',
-                        position: 'relative',
-                      }}
+                      className="flex-1 flex flex-col items-center gap-1 h-full justify-end"
                     >
-                      {/* "best" badge */}
                       {isBest && (
-                        <span style={{
-                          position: 'absolute',
-                          top: 0,
-                          fontSize: '0.6rem',
-                          color: color.success,
-                          fontWeight: 700,
-                        }}>
-                          best
-                        </span>
+                        <span className="text-[9px] font-bold text-good">best</span>
                       )}
-                      {/* Numeric label above bar */}
-                      <span style={{
-                        fontSize: '0.65rem',
-                        color: color.text,
-                        fontFamily: '"JetBrains Mono", Consolas, monospace',
-                      }}>
-                        {typeof val === 'number' && !Number.isInteger(val) ? fmt(val) : val}
+                      <span className="font-mono text-[10px] text-ink">
+                        {Number.isInteger(val) ? val : fmt(val)}
                       </span>
-                      {/* Bar */}
-                      <div
-                        style={{
-                          width: '100%',
-                          height: `${Math.max(barHeight, 2)}%`,
-                          background: BAR_COLORS[i],
-                          borderRadius: '3px 3px 0 0',
-                          outline: isBest ? `2px solid ${color.success}` : 'none',
-                          outlineOffset: '1px',
-                        }}
+                      <motion.div
+                        className="w-full rounded-t"
+                        style={{ background: ALGO_COLORS[i], outline: isBest ? `2px solid rgb(var(--good))` : 'none', outlineOffset: 2 }}
+                        initial={{ height: 0 }}
+                        animate={{ height: `${Math.max(pct, 3)}%` }}
+                        transition={{ duration: 0.4, ease: 'easeOut', delay: i * 0.05 }}
                       />
                     </div>
                   )
@@ -126,17 +82,13 @@ export default function CompareView() {
               </div>
 
               {/* Algo labels */}
-              <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                {ALGO_ORDER.map((a) => (
-                  <div key={a} style={{
-                    flex: 1,
-                    textAlign: 'center',
-                    fontSize: '0.6rem',
-                    color: color.muted,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}>
+              <div className="flex gap-2">
+                {ALGO_ORDER.map((a, i) => (
+                  <div
+                    key={a}
+                    className="flex-1 text-center font-mono text-[9px] truncate"
+                    style={{ color: ALGO_COLORS[i] }}
+                  >
                     {ALGO_LABEL[a].replace('Round Robin', 'RR')}
                   </div>
                 ))}
@@ -146,72 +98,46 @@ export default function CompareView() {
         })}
       </div>
 
-      {/* Summary table */}
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8rem' }}>
+      {/* ── Summary table ── */}
+      <div className="sheet overflow-x-auto p-0">
+        <table className="w-full text-sm border-collapse">
           <thead>
-            <tr>
-              <th style={{
-                padding: '6px 10px',
-                color: color.muted,
-                fontWeight: 500,
-                textAlign: 'left',
-                borderBottom: `1px solid ${color.border}`,
-                whiteSpace: 'nowrap',
-                fontSize: '0.72rem',
-              }}>
+            <tr className="border-b border-line">
+              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted">
                 Algorithm
               </th>
-              {TABLE_METRICS.map((m) => (
-                <th key={m.key} style={{
-                  padding: '6px 10px',
-                  color: color.muted,
-                  fontWeight: 500,
-                  textAlign: 'right',
-                  borderBottom: `1px solid ${color.border}`,
-                  whiteSpace: 'nowrap',
-                  fontSize: '0.72rem',
-                }}>
-                  {m.label}
+              {TABLE_COLS.map((col) => (
+                <th
+                  key={col.key}
+                  className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted whitespace-nowrap"
+                >
+                  {col.label}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {runs.map((run, i) => (
-              <tr key={run.algo}>
-                {/* Algo name colored by its BAR_COLORS entry */}
-                <td style={{
-                  padding: '5px 10px',
-                  fontWeight: 600,
-                  color: BAR_COLORS[i],
-                  borderBottom: `1px solid ${color.border}20`,
-                  fontFamily: '"JetBrains Mono", Consolas, monospace',
-                  fontSize: '0.8rem',
-                }}>
+            {runs.map((run, ri) => (
+              <tr key={run.algo} className="border-b border-line/30 last:border-0">
+                <td
+                  className="px-4 py-2.5 font-mono font-bold text-sm"
+                  style={{ color: ALGO_COLORS[ri] }}
+                >
                   {ALGO_LABEL[run.algo]}
                 </td>
-                {TABLE_METRICS.map((m) => {
-                  const val     = run.metrics[m.key as keyof typeof run.metrics] as number
-                  const allVals = runs.map((r) => r.metrics[m.key as keyof typeof r.metrics] as number)
-                  // cpu_utilization and throughput: higher is better; rest: lower is better
-                  const isBest = (m.key === 'cpu_utilization' || m.key === 'throughput')
+                {TABLE_COLS.map((col) => {
+                  const val     = run.metrics[col.key] as number
+                  const allVals = runs.map((r) => r.metrics[col.key] as number)
+                  const isBest  = col.higherBetter
                     ? val === Math.max(...allVals)
                     : val === Math.min(...allVals)
                   return (
                     <td
-                      key={m.key}
-                      style={{
-                        padding: '5px 10px',
-                        textAlign: 'right',
-                        fontFamily: '"JetBrains Mono", Consolas, monospace',
-                        color: isBest ? color.success : color.text,
-                        fontWeight: isBest ? 700 : 400,
-                        borderBottom: `1px solid ${color.border}20`,
-                        fontSize: '0.8rem',
-                      }}
+                      key={col.key}
+                      className="px-4 py-2.5 text-right font-mono text-xs tabular-nums"
+                      style={{ color: isBest ? 'rgb(var(--good))' : undefined, fontWeight: isBest ? 700 : 400 }}
                     >
-                      {m.format(val)}
+                      {col.fmt(val)}
                     </td>
                   )
                 })}
@@ -220,6 +146,7 @@ export default function CompareView() {
           </tbody>
         </table>
       </div>
+
     </div>
   )
 }
