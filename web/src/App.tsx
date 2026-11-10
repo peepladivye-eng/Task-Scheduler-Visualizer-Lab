@@ -13,6 +13,7 @@ import ProcessTable from './components/ProcessTable'
 import EventLog from './components/EventLog'
 import MetricsCards from './components/MetricsCards'
 import Transport from './components/Transport'
+import CommandPalette from './components/CommandPalette'
 
 export default function App() {
   const [width, setWidth] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1920)
@@ -90,6 +91,7 @@ export default function App() {
       </motion.main>
       
       <Transport />
+      <CommandPalette />
     </div>
   )
 }
