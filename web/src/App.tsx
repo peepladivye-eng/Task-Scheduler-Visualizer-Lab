@@ -8,6 +8,7 @@ import TaskEditor from './components/TaskEditor'
 import Workbench from './components/Workbench'
 import CpuCard from './components/CpuCard'
 import ReadyQueue from './components/ReadyQueue'
+import Narrator from './components/Narrator'
 import ProcessTable from './components/ProcessTable'
 import EventLog from './components/EventLog'
 import MetricsCards from './components/MetricsCards'
@@ -71,6 +72,7 @@ export default function App() {
                 <div className="space-y-5">
                   <CpuCard />
                   <ReadyQueue />
+                  <Narrator />
                 </div>
                 <EventLog trace={trace} t={t} />
               </div>
