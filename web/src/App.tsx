@@ -4,13 +4,20 @@ import { container, rise } from './design/motion'
 import { useStudio } from './store/useStudio'
 import Header from './components/Header'
 import ScenarioBar from './components/ScenarioBar'
+import TaskEditor from './components/TaskEditor'
 import Workbench from './components/Workbench'
+import CpuCard from './components/CpuCard'
+import ReadyQueue from './components/ReadyQueue'
+import ProcessTable from './components/ProcessTable'
+import EventLog from './components/EventLog'
+import MetricsCards from './components/MetricsCards'
 import Transport from './components/Transport'
 
 export default function App() {
   const [width, setWidth] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1920)
   const trace = useStudio((s) => s.trace)
   const t = useStudio((s) => s.t)
+  const state = useStudio((s) => s.state)
   
   React.useEffect(() => {
     const handleResize = () => setWidth(window.innerWidth)
@@ -37,7 +44,7 @@ export default function App() {
   }
   
   return (
-    <div className="min-h-screen bg-paper">
+    <div className="min-h-screen bg-paper pb-20">
       <Header />
       
       <motion.main
@@ -50,23 +57,35 @@ export default function App() {
           <ScenarioBar />
         </motion.div>
         
-        {trace ? (
-          <motion.div variants={rise}>
-            <Workbench trace={trace} t={t} />
-          </motion.div>
-        ) : (
-          <motion.div variants={rise} className="sheet">
-            <p className="text-muted">Loading scheduler...</p>
-          </motion.div>
+        <motion.div variants={rise}>
+          <TaskEditor />
+        </motion.div>
+        
+        {trace && (
+          <>
+            <motion.div variants={rise}>
+              <Workbench trace={trace} t={t} />
+            </motion.div>
+            
+            <motion.div variants={rise}>
+              <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-5">
+                <div className="space-y-5">
+                  <CpuCard state={state} />
+                  <ReadyQueue state={state} />
+                </div>
+                <EventLog trace={trace} t={t} />
+              </div>
+            </motion.div>
+            
+            <motion.div variants={rise}>
+              <ProcessTable trace={trace} t={t} />
+            </motion.div>
+            
+            <motion.div variants={rise}>
+              <MetricsCards trace={trace} />
+            </motion.div>
+          </>
         )}
-        
-        <motion.div variants={rise} className="sheet">
-          <p className="text-ink"><strong>Stage + Narrator</strong> (V10-V11)</p>
-        </motion.div>
-        
-        <motion.div variants={rise} className="sheet">
-          <p className="text-ink"><strong>Results</strong> (V13)</p>
-        </motion.div>
       </motion.main>
       
       <Transport />

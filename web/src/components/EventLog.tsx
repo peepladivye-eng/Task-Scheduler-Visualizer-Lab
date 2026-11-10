@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+﻿import React, { useRef, useEffect } from 'react'
 import { useStudio } from '../store/useStudio'
 import { color } from '../design/tokens'
 import type { EvType } from '../types/trace'

@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDerived } from '../store/useStudio'
 import { color, motion as motionTokens } from '../design/tokens'
@@ -9,7 +9,7 @@ export default function ReadyQueue() {
 
   if (!derived) {
     return (
-      <span style={{ color: color.muted, fontSize: '0.82rem' }}>—</span>
+      <span style={{ color: color.muted, fontSize: '0.82rem' }}>ΓÇö</span>
     )
   }
 

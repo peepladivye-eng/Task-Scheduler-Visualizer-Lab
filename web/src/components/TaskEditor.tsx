@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+﻿import React, { useState } from 'react'
 import { useStudio } from '../store/useStudio'
 import { ALGO_LABEL, ALGO_ORDER, type Algo, type ProcInput } from '../types/trace'
 import { PRESETS } from '../lib/presets.generated'
@@ -167,7 +167,7 @@ export default function TaskEditor() {
           onChange={(e) => handlePreset(e.target.value)}
           style={{ ...inputStyle, width: '100%', appearance: 'none', WebkitAppearance: 'none' }}
         >
-          <option value="">— choose preset —</option>
+          <option value="">ΓÇö choose preset ΓÇö</option>
           {PRESETS.map((p) => (
             <option key={p.id} value={p.id}>{p.label}</option>
           ))}
@@ -198,7 +198,7 @@ export default function TaskEditor() {
                     aria-label={`Delete process ${p.pid}`}
                     style={{ background: 'none', border: 'none', color: color.danger, cursor: 'pointer', fontSize: '1rem', padding: '0 4px', lineHeight: 1 }}
                   >
-                    ×
+                    ├ù
                   </button>
                 </td>
               </tr>

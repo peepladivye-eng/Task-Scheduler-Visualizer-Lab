@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useStudio } from '../store/useStudio'
 import { color } from '../design/tokens'
@@ -28,22 +28,22 @@ export default function MetricsCards() {
     {
       label:   'Avg Waiting',
       value:   fmtMs(m.avg_waiting),
-      formula: 'turnaround − burst',
+      formula: 'turnaround ΓêÆ burst',
     },
     {
       label:   'Avg Turnaround',
       value:   fmtMs(m.avg_turnaround),
-      formula: 'completion − arrival',
+      formula: 'completion ΓêÆ arrival',
     },
     {
       label:   'Avg Response',
       value:   fmtMs(m.avg_response),
-      formula: 'first run − arrival',
+      formula: 'first run ΓêÆ arrival',
     },
     {
       label:   'CPU Utilization',
       value:   fmtPct(m.cpu_utilization),
-      formula: 'run ticks / total × 100',
+      formula: 'run ticks / total ├ù 100',
     },
     {
       label:   'Throughput',

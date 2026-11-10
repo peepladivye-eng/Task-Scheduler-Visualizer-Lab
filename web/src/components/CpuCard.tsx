@@ -1,4 +1,4 @@
-import React from 'react'
+﻿import React from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useStudio, useDerived } from '../store/useStudio'
 import { totalTime } from '../lib/deriveState'
@@ -11,10 +11,10 @@ export default function CpuCard() {
   const derived = useDerived()
   const reducedMotion = useReducedMotion()
 
-  // null derived → no trace loaded
+  // null derived ΓåÆ no trace loaded
   if (!derived || !trace) {
     return (
-      <span style={{ color: color.muted, fontSize: '0.88rem' }}>—</span>
+      <span style={{ color: color.muted, fontSize: '0.88rem' }}>ΓÇö</span>
     )
   }
 
@@ -43,7 +43,7 @@ export default function CpuCard() {
           Context Switch
         </span>
         <span style={{ color: color.warn, fontWeight: 700, fontSize: '1rem' }}>
-          → P{derived.csPid}
+          ΓåÆ P{derived.csPid}
         </span>
       </div>
     )
@@ -97,7 +97,7 @@ export default function CpuCard() {
     contentKey = 'done'
     content = (
       <span style={{ color: color.success, fontSize: '0.88rem', fontWeight: 600 }}>
-        All done ✓
+        All done Γ£ô
       </span>
     )
   } else {
