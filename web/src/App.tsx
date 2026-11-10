@@ -9,23 +9,30 @@ import Workbench from './components/Workbench'
 import CpuCard from './components/CpuCard'
 import ReadyQueue from './components/ReadyQueue'
 import Narrator from './components/Narrator'
+import PredictPanel from './components/PredictPanel'
 import ProcessTable from './components/ProcessTable'
 import EventLog from './components/EventLog'
 import MetricsCards from './components/MetricsCards'
+import ResultsPanel from './components/ResultsPanel'
+import RaceView from './components/RaceView'
 import Transport from './components/Transport'
 import CommandPalette from './components/CommandPalette'
+import Tour, { useTour } from './components/Tour'
+import CompareView from './components/CompareView'
 
 export default function App() {
   const [width, setWidth] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1920)
   const trace = useStudio((s) => s.trace)
   const t = useStudio((s) => s.t)
-  
+  const view = useStudio((s) => s.view)
+  const tour = useTour()
+
   React.useEffect(() => {
     const handleResize = () => setWidth(window.innerWidth)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-  
+
   if (width < 1100) {
     return (
       <div className="min-h-screen bg-paper flex items-center justify-center p-8">
@@ -43,55 +50,95 @@ export default function App() {
       </div>
     )
   }
-  
+
   return (
     <div className="min-h-screen bg-paper pb-20">
-      <Header />
-      
+      <Header onTourRestart={tour.restart} />
+
       <motion.main
         variants={container}
         initial="hidden"
         animate="show"
         className="max-w-[1280px] mx-auto px-8 py-6 flex flex-col gap-5"
       >
-        <motion.div variants={rise}>
+        {/* Scenario bar — tour target */}
+        <motion.div variants={rise} data-tour="scenario">
           <ScenarioBar />
         </motion.div>
-        
-        <motion.div variants={rise}>
+
+        {/* Process editor — tour target */}
+        <motion.div variants={rise} data-tour="editor">
           <TaskEditor />
         </motion.div>
-        
-        {trace && (
+
+        {/* Compare mode */}
+        {view === 'compare' && (
           <>
             <motion.div variants={rise}>
+              <RaceView />
+            </motion.div>
+            <motion.div variants={rise}>
+              <CompareView />
+            </motion.div>
+          </>
+        )}
+
+        {/* Single-run mode */}
+        {view === 'single' && trace && (
+          <>
+            {/* Gantt — tour target */}
+            <motion.div variants={rise} data-tour="workbench">
               <Workbench trace={trace} t={t} />
             </motion.div>
-            
+
             <motion.div variants={rise}>
               <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-5">
+                {/* Left column */}
                 <div className="space-y-5">
                   <CpuCard />
                   <ReadyQueue />
-                  <Narrator />
+                  {/* Narrator — tour target */}
+                  <div data-tour="narrator">
+                    <Narrator />
+                  </div>
+                  <PredictPanel />
                 </div>
+
                 <EventLog trace={trace} t={t} />
               </div>
             </motion.div>
-            
+
             <motion.div variants={rise}>
               <ProcessTable trace={trace} t={t} />
             </motion.div>
-            
+
             <motion.div variants={rise}>
               <MetricsCards trace={trace} />
+            </motion.div>
+
+            {/* Results panel — appears when simulation finishes */}
+            <motion.div variants={rise}>
+              <ResultsPanel />
             </motion.div>
           </>
         )}
       </motion.main>
-      
-      <Transport />
+
+      {/* Transport — tour target */}
+      <div data-tour="transport">
+        <Transport />
+      </div>
+
       <CommandPalette />
+
+      <Tour
+        active={tour.active}
+        step={tour.step}
+        steps={tour.steps}
+        next={tour.next}
+        prev={tour.prev}
+        finish={tour.finish}
+      />
     </div>
   )
 }
