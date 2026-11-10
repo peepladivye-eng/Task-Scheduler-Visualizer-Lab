@@ -1,5 +1,6 @@
-﻿// V1 Temporary: Theme swatch test page
+﻿// V2: Theme swatch test page with Appearance popover
 import React from 'react'
+import Appearance from './components/Appearance'
 
 const colors = [
   { name: 'paper', class: 'bg-paper' },
@@ -32,9 +33,12 @@ export default function App() {
   return (
     <div className="min-h-screen bg-paper p-8">
       <div className="max-w-4xl mx-auto space-y-8">
-        <h1 className="text-4xl font-display font-semibold text-ink">
-          Theme Swatch Test
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-4xl font-display font-semibold text-ink">
+            Theme Swatch Test
+          </h1>
+          <Appearance />
+        </div>
         
         <div className="sheet space-y-4">
           <h2 className="text-xl font-display text-ink mb-4">Theme Colors</h2>
@@ -63,14 +67,7 @@ export default function App() {
 
         <div className="sheet">
           <p className="text-sm text-muted">
-            Toggle theme in DevTools: Open Console and run{' '}
-            <code className="bg-chip px-2 py-1 rounded font-mono text-xs">
-              document.documentElement.dataset.theme = 'dark'
-            </code>{' '}
-            or{' '}
-            <code className="bg-chip px-2 py-1 rounded font-mono text-xs">
-              'light'
-            </code>
+            Click the sun/moon button in the top right to change theme mode (Light, Dark, System) and choose accent colors!
           </p>
         </div>
       </div>
