@@ -1,125 +1,142 @@
 ﻿import React from 'react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
+import { useFocus, focusProps, dimClass } from '../store/useFocus'
 import { useStudio, useDerived } from '../store/useStudio'
 import { totalTime } from '../lib/deriveState'
-import { color } from '../design/tokens'
-import { pidColor } from '../design/pidColor'
+import { spring } from '../design/motion'
+
+const PID_COLORS = [
+  '#6ea8fe', '#3ddc97', '#ffb454', '#ff6b9d', '#b794f6',
+  '#4fd1c5', '#f6e05e', '#fc8181', '#90cdf4', '#a3e635',
+]
+
+function getPidColor(pid: number): string {
+  return PID_COLORS[(pid - 1) % 10]
+}
 
 export default function CpuCard() {
   const trace = useStudio((s) => s.trace)
   const t = useStudio((s) => s.t)
-  const derived = useDerived()
+  const state = useDerived()
   const reducedMotion = useReducedMotion()
+  const focusPid = useFocus((s) => s.pid)
 
-  // null derived ΓåÆ no trace loaded
-  if (!derived || !trace) {
+  if (!state || !trace) {
     return (
-      <span style={{ color: color.muted, fontSize: '0.88rem' }}>ΓÇö</span>
+      <div className="sheet space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-good" />
+          <h3 className="font-display font-semibold text-ink text-lg">CPU</h3>
+        </div>
+        <div className="text-muted text-sm">—</div>
+      </div>
     )
   }
 
   const total = totalTime(trace)
   const fadeDuration = reducedMotion ? 0 : 0.16
 
-  // Determine the current content and a stable key for AnimatePresence
+  // Determine current content and key for AnimatePresence
   let contentKey: string
   let content: React.ReactNode
 
-  if (derived.csActive && derived.csPid !== null) {
-    contentKey = `cs-${derived.csPid}`
+  if (state.csActive && state.csPid !== null) {
+    const pid = state.csPid
+    const color = getPidColor(pid)
+    contentKey = `cs-${pid}`
     content = (
-      <div
+      <motion.div
+        key={contentKey}
+        layoutId={`process-chip-${pid}`}
+        className="border rounded-lg p-3 space-y-2"
         style={{
-          border: `1px solid ${color.warn}88`,
-          background: `${color.warn}11`,
-          borderRadius: '8px',
-          padding: '10px 12px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '4px',
+          borderColor: '#ffb45488',
+          backgroundColor: '#ffb45411',
         }}
       >
-        <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: color.warn, fontWeight: 600 }}>
+        <div className="text-xs font-semibold uppercase tracking-wider text-warn">
           Context Switch
-        </span>
-        <span style={{ color: color.warn, fontWeight: 700, fontSize: '1rem' }}>
-          ΓåÆ P{derived.csPid}
-        </span>
-      </div>
+        </div>
+        <div className="font-mono font-bold text-lg text-warn">
+          → P{pid}
+        </div>
+      </motion.div>
     )
-  } else if (derived.running !== null) {
-    const pid = derived.running.pid
-    const pc = pidColor(pid)
+  } else if (state.running !== null) {
+    const pid = state.running.pid
+    const color = getPidColor(pid)
     const proc = trace.processes.find((p) => p.pid === pid)
     const burst = proc?.burst ?? 1
-    const rem = derived.remaining[pid] ?? 0
-    const progressPct = Math.max(0, Math.min(100, (rem / burst) * 100))
+    const rem = state.remaining[pid] ?? 0
+    const progressPct = Math.max(0, Math.min(100, ((burst - rem) / burst) * 100))
+    
     contentKey = `run-${pid}`
     content = (
-      <div
+      <motion.div
+        key={contentKey}
+        layoutId={`process-chip-${pid}`}
+        className={`border rounded-lg p-3 space-y-2 ${dimClass(focusPid, pid)}`}
         style={{
-          border: `1px solid ${pc}88`,
-          background: `${pc}22`,
-          borderRadius: '8px',
-          padding: '10px 12px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '6px',
+          borderColor: `${color}88`,
+          backgroundColor: `${color}22`,
         }}
+        {...focusProps(pid)}
       >
-        {/* PID label */}
-        <span style={{ color: pc, fontWeight: 700, fontSize: '1.4rem', fontFamily: '"JetBrains Mono", Consolas, monospace', lineHeight: 1 }}>
+        <div className="font-mono font-bold text-2xl" style={{ color }}>
           P{pid}
-        </span>
-        {/* Status */}
-        <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: pc, fontWeight: 600 }}>
+        </div>
+        <div className="text-xs font-semibold uppercase tracking-wider" style={{ color }}>
           Running
-        </span>
-        {/* Remaining info */}
-        <span style={{ fontSize: '0.78rem', color: color.muted, fontFamily: '"JetBrains Mono", Consolas, monospace' }}>
-          remaining {rem} of {burst} ms
-        </span>
+        </div>
+        <div className="font-mono text-sm text-muted">
+          {rem} / {burst} ms remaining
+        </div>
         {/* Progress bar */}
-        <div style={{ background: color.raised, borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
-          <div
-            style={{
-              background: pc,
-              height: '100%',
-              width: `${progressPct}%`,
-              borderRadius: '4px',
-              transition: 'width 120ms ease-out',
-            }}
+        <div className="bg-chip rounded h-1.5 overflow-hidden">
+          <motion.div
+            className="h-full rounded"
+            style={{ backgroundColor: color }}
+            initial={{ width: 0 }}
+            animate={{ width: `${progressPct}%` }}
+            transition={reducedMotion ? { duration: 0 } : { duration: 0.3, ease: 'easeOut' }}
           />
         </div>
-      </div>
+      </motion.div>
     )
   } else if (t >= total) {
     contentKey = 'done'
     content = (
-      <span style={{ color: color.success, fontSize: '0.88rem', fontWeight: 600 }}>
-        All done Γ£ô
-      </span>
+      <div className="text-good font-semibold text-sm">
+        All done ✓
+      </div>
     )
   } else {
     contentKey = 'idle'
     content = (
-      <span style={{ color: color.muted, fontSize: '0.88rem' }}>
+      <div className="text-muted text-sm">
         CPU idle
-      </span>
+      </div>
     )
   }
 
   return (
-    <AnimatePresence mode="wait">
-      <motion.div
-        key={contentKey}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: fadeDuration }}
-      >
-        {content}
-      </motion.div>
-    </AnimatePresence>
+    <div className="sheet space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="w-2 h-2 rounded-full bg-good" />
+        <h3 className="font-display font-semibold text-ink text-lg">CPU</h3>
+      </div>
+
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={contentKey}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: fadeDuration }}
+        >
+          {content}
+        </motion.div>
+      </AnimatePresence>
+    </div>
   )
 }

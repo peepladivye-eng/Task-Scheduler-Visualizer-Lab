@@ -17,7 +17,6 @@ export default function App() {
   const [width, setWidth] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1920)
   const trace = useStudio((s) => s.trace)
   const t = useStudio((s) => s.t)
-  const state = useStudio((s) => s.state)
   
   React.useEffect(() => {
     const handleResize = () => setWidth(window.innerWidth)
@@ -70,8 +69,8 @@ export default function App() {
             <motion.div variants={rise}>
               <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-5">
                 <div className="space-y-5">
-                  <CpuCard state={state} />
-                  <ReadyQueue state={state} />
+                  <CpuCard />
+                  <ReadyQueue />
                 </div>
                 <EventLog trace={trace} t={t} />
               </div>
