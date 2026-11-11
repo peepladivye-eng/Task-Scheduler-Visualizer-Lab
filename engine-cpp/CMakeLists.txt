@@ -28,6 +28,9 @@ if(UNIX AND NOT APPLE)
         src/ipc/pipe_manager.cpp
         src/process/child_worker.cpp
         src/process/process_manager.cpp
+        src/process/pipe_backend.cpp
+        src/process/signal_backend.cpp
+        src/process/worker_backend_factory.cpp
     )
 else()
     set(PROCESS_SOURCES "")
