@@ -16,8 +16,9 @@
 #include <string>
 
 // ── Volatile flags set by signal handlers (parent only) ──────────────────────
-static volatile sig_atomic_t g_timeout_flag = 0;
-static volatile sig_atomic_t g_stop_flag    = 0;
+// Declared extern in main.cpp so it can check the exit code.
+volatile sig_atomic_t g_timeout_flag = 0;
+volatile sig_atomic_t g_stop_flag    = 0;
 
 static void handle_alrm(int) { g_timeout_flag = 1; }
 static void handle_int(int)  { g_stop_flag    = 1; }
@@ -60,7 +61,8 @@ static void install_parent_handlers() {
 
 SignalBackend::SignalBackend(const LiveOptions& opt)
     : opt_(opt), group_(0), parent_(::getpid()) {
-    install_parent_handlers();
+    // Signal handlers are installed by the execution controller before
+    // any backend is created. No need to reinstall here.
 }
 
 SignalBackend::~SignalBackend() { abort_all(); }

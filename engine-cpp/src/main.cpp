@@ -22,9 +22,16 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <csignal>
 
 #ifdef __linux__
 #include "../include/process/worker_backend.hpp"
+#endif
+
+// Signal flags: set by handlers in signal_backend.cpp (Linux only).
+// Declared here so main.cpp can check exit codes after interruption.
+#ifdef __linux__
+extern volatile sig_atomic_t g_stop_flag;
 #endif
 
 using namespace sched;
@@ -200,7 +207,14 @@ int main(int argc, char* argv[]) {
             } else {
                 result = simulate(cfg, procs);
             }
-        } catch (const std::exception& e) { die(e.what()); }
+        } catch (const std::exception& e) {
+            std::fprintf(stderr, "error: %s\n", e.what());
+            // Check if this was a signal-induced interruption
+            if (g_stop_flag) {
+                std::exit(130);  // SIGINT
+            }
+            std::exit(1);
+        }
 
         Metrics met = compute_metrics(result);
 

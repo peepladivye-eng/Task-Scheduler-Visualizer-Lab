@@ -4,11 +4,32 @@
 #ifdef __linux__
 #include "../../include/process/worker_backend.hpp"
 #include <unistd.h>
+#include <signal.h>
+#include <csignal>
 #include <cerrno>
 #include <cstring>
 #include <stdexcept>
 #include <unordered_map>
 #include <cstdio>
+
+// Signal flags (defined in signal_backend.cpp, used here and in main.cpp).
+extern volatile sig_atomic_t g_timeout_flag;
+extern volatile sig_atomic_t g_stop_flag;
+
+// Install SIGINT/SIGTERM/SIGALRM handlers in the parent process.
+// Called once before any backend starts. Idempotent.
+static void install_signal_handlers() {
+    struct sigaction sa{};
+    sa.sa_handler = [](int) { g_timeout_flag = 1; };
+    ::sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;  // NO SA_RESTART
+    ::sigaction(SIGALRM, &sa, nullptr);
+
+    sa.sa_handler = [](int) { g_stop_flag = 1; };
+    ::sigaction(SIGINT,  &sa, nullptr);
+    ::sigaction(SIGTERM, &sa, nullptr);
+}
+
 #endif
 
 namespace sched {
@@ -21,6 +42,8 @@ SimResult simulate_with_workers(const SimConfig& cfg,
     SimResult result = simulate(cfg, inputs);
 
     // 2. Build the backend (signal or pipe).
+    //    Install signal handlers first so both backends handle SIGINT/SIGTERM.
+    install_signal_handlers();
     LiveOptions opt;
     opt.work_us  = live.work_us;
     opt.tick_ms  = live.tick_ms;
@@ -67,6 +90,12 @@ SimResult simulate_with_workers(const SimConfig& cfg,
         // Run each tick in this segment individually.
         int ticks = seg.t_end - seg.t_start;
         for (int t = 0; t < ticks; ++t) {
+            // Check for interruption signal
+            if (g_stop_flag) {
+                backend->abort_all();
+                throw std::runtime_error("interrupted by signal");
+            }
+
             if (live.log_mode) {
                 std::fprintf(stderr, "[t=%4d] SIGCONT  P%d (os_pid=%d)\n",
                     seg.t_start + t, pid,
