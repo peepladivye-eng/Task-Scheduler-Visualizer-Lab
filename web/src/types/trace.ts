@@ -99,3 +99,25 @@ export interface LiveResponse {
   trace: Trace
   log: string[]
 }
+
+// Live event from /api/live NDJSON stream (matches engine NdjsonSink output)
+export type LiveEventType = 'arrive' | 'dispatch' | 'run' | 'preempt' | 'exit' | 'cleanup'
+
+export interface LiveStreamEvent {
+  type: LiveEventType
+  t: number
+  pid?: number
+  os_pid?: number
+  burst?: number
+  ready?: number[]
+  tick?: number
+  total?: number
+  reason?: string
+  status?: number
+  cpu_ms?: number
+  max_rss_kb?: number
+  pgid?: number
+  live?: number
+  reaped?: number
+  zombies?: number
+}

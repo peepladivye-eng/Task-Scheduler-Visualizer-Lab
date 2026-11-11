@@ -1,4 +1,4 @@
-﻿import React, { useRef, useEffect } from 'react'
+import React, { useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Terminal } from 'lucide-react'
 import { useStudio } from '../store/useStudio'
@@ -100,11 +100,26 @@ function buildLog(trace: ReturnType<typeof useStudio extends (f: (s: any) => inf
   return lines
 }
 
+/** Map event type to colour class */
+function liveLineColor(type: string): string {
+  switch (type) {
+    case 'arrive':   return 'text-accent'
+    case 'dispatch': return 'text-good'
+    case 'run':      return 'text-ink/80'
+    case 'preempt':  return 'text-warn'
+    case 'exit':     return 'text-muted'
+    case 'cleanup':  return 'text-warn'
+    default:         return 'text-ink/60'
+  }
+}
+
 export default function ExecutionTerminal() {
-  const trace = useStudio((s) => s.trace)
-  const t     = useStudio((s) => s.t)
-  const liveMode = useStudio((s) => s.liveMode)
-  const liveLog = useStudio((s) => s.liveLog)
+  const trace     = useStudio((s) => s.trace)
+  const t         = useStudio((s) => s.t)
+  const liveMode  = useStudio((s) => s.liveMode)
+  const liveLog   = useStudio((s) => s.liveLog)
+  const liveEvents = useStudio((s) => s.liveEvents)
+  const liveRunning = useStudio((s) => s.liveRunning)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const lines = buildLog(trace as any, t, liveMode)
@@ -116,6 +131,9 @@ export default function ExecutionTerminal() {
     if (el) el.scrollTop = el.scrollHeight
   }, [visible.length, liveLog.length])
 
+  // Show streaming live log while running (or after, if no trace yet)
+  const showLiveStream = liveMode && (liveRunning || (liveLog.length > 0 && !trace))
+
   return (
     <div className="sheet space-y-3">
       <div className="flex items-center gap-2">
@@ -126,6 +144,9 @@ export default function ExecutionTerminal() {
             live
           </span>
         )}
+        {liveRunning && (
+          <span className="text-xs font-mono text-accent animate-pulse">streaming…</span>
+        )}
         <span className="ml-auto font-mono text-xs text-muted">{visible.length} events</span>
       </div>
 
@@ -134,7 +155,28 @@ export default function ExecutionTerminal() {
         className="bg-ink/5 dark:bg-ink/20 rounded-lg font-mono text-xs overflow-y-auto max-h-64 p-3 space-y-1"
         style={{ background: 'rgb(var(--surface, 11 15 23) / 0.5)' }}
       >
-        {!trace ? (
+        {/* While streaming live events: show them directly */}
+        {showLiveStream ? (
+          liveLog.length === 0 ? (
+            <div className="text-muted italic">Waiting for engine…</div>
+          ) : (
+            liveLog.map((line, i) => {
+              const ev = liveEvents[i]
+              const colorClass = ev ? liveLineColor(ev.type) : 'text-ink/60'
+              return (
+                <motion.div
+                  key={`live-stream-${i}`}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={spring.snappy}
+                  className={`leading-relaxed whitespace-pre font-mono text-xs ${colorClass}`}
+                >
+                  {line}
+                </motion.div>
+              )
+            })
+          )
+        ) : !trace ? (
           <div className="text-muted italic">Run a simulation to see the execution log.</div>
         ) : visible.length === 0 && liveLog.length === 0 ? (
           <div className="text-muted italic">Waiting for t=0…</div>
@@ -159,15 +201,23 @@ export default function ExecutionTerminal() {
                 </motion.div>
               ))}
             </AnimatePresence>
-            {liveLog.length > 0 && (
+            {/* Show final live log after stream completes (if trace also loaded) */}
+            {liveLog.length > 0 && trace && (
               <>
                 <div className="border-t border-ink/10 my-2" />
                 <div className="text-xs font-mono text-good mb-1">— Live engine output —</div>
-                {liveLog.map((line, i) => (
-                  <div key={`live-${i}`} className="text-ink/60 font-mono text-xs leading-relaxed whitespace-pre-wrap">
-                    {line}
-                  </div>
-                ))}
+                {liveLog.map((line, i) => {
+                  const ev = liveEvents[i]
+                  const colorClass = ev ? liveLineColor(ev.type) : 'text-ink/60'
+                  return (
+                    <div
+                      key={`live-${i}`}
+                      className={`font-mono text-xs leading-relaxed whitespace-pre ${colorClass}`}
+                    >
+                      {line}
+                    </div>
+                  )
+                })}
               </>
             )}
           </>

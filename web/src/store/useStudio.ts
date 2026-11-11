@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { useMemo } from 'react'
 import type { Algo, CompareTrace, ProcInput, Trace } from '../types/trace'
-import { runSimulation, runCompare, runLive, pingEngine, EngineError } from '../lib/api'
+import type { LiveStreamEvent } from '../types/trace'
+import { runSimulation, runCompare, runLive, streamLive, pingEngine, EngineError } from '../lib/api'
 import { deriveState, totalTime, type DerivedState } from '../lib/deriveState'
 import { PRESETS } from '../lib/presets.generated'
 import { validateInputs, type InputProblem } from '../lib/validate'
@@ -32,6 +33,7 @@ interface StudioState {
   workUs: number
   tickMs: number
   liveLog: string[]             // log lines from the engine --log output
+  liveEvents: LiveStreamEvent[] // NDJSON events streamed from /api/live
   liveRunning: boolean          // true while a live run is in progress
 
   // Status (new reactive pipeline states)
@@ -78,6 +80,38 @@ const defaultPreset = PRESETS[0]
 // Global timer and abort controller for reactive pipeline
 let scheduleTimer: ReturnType<typeof setTimeout> | null = null
 let currentAbort: AbortController | null = null
+
+/** Format a LiveStreamEvent as a terminal log line matching the WSL output format. */
+function formatLiveEvent(ev: LiveStreamEvent): string {
+  const t = `t=${String(ev.t).padStart(3, ' ')}`
+  const pidStr = ev.pid != null ? `P${ev.pid}` : ''
+  switch (ev.type) {
+    case 'arrive': {
+      return `${t} ARRIVE   ${pidStr.padEnd(3, ' ')} fork() -> os_pid ${ev.os_pid ?? '?'}, child stopped (T)`
+    }
+    case 'dispatch': {
+      const rq = (ev.ready ?? []).map(p => `P${p}`).join(',')
+      return `${t} DISPATCH ${pidStr.padEnd(3, ' ')} kill(${ev.os_pid ?? '?'},SIGCONT) ready=[${rq}]`
+    }
+    case 'run': {
+      return `${t} RUN      ${pidStr.padEnd(3, ' ')} os_pid ${ev.os_pid ?? '?'} tick ${ev.tick ?? '?'}/${ev.total ?? '?'}`
+    }
+    case 'preempt': {
+      const reason = ev.reason ? `stopped by SIGSTOP, ${ev.reason}` : 'stopped by SIGSTOP'
+      return `${t} PREEMPT  ${pidStr.padEnd(3, ' ')} wait4 -> ${reason}`
+    }
+    case 'exit': {
+      const cpu = ev.cpu_ms != null ? ev.cpu_ms.toFixed(2) + ' ms' : '?'
+      const rss = ev.max_rss_kb != null ? (ev.max_rss_kb / 1024).toFixed(1) + ' MB' : '?'
+      return `${t} EXIT     ${pidStr.padEnd(3, ' ')} wait4 -> exited ${ev.status ?? 0}, cpu ${cpu}, max_rss ${rss}`
+    }
+    case 'cleanup': {
+      return `${t} CLEANUP  kill(-${ev.pgid ?? 'pgid'},SIGKILL) live=${ev.live ?? 0} reaped ${ev.reaped ?? 0}/${ev.total ?? 0} zombies ${ev.zombies ?? 0}`
+    }
+    default:
+      return `${t} ${(ev as LiveStreamEvent).type.toUpperCase()} ${pidStr}`
+  }
+}
 
 export const useStudio = create<StudioStore>((set, get) => {
   // Helper: schedule a debounced run
@@ -179,6 +213,7 @@ export const useStudio = create<StudioStore>((set, get) => {
     workUs: 200,
     tickMs: 200,
     liveLog: [],
+    liveEvents: [],
     liveRunning: false,
     sim: 'fresh', // Start with preset loaded
     problems: [],
@@ -246,7 +281,7 @@ export const useStudio = create<StudioStore>((set, get) => {
     setIpc: (ipc) => set({ ipc }),
     setWorkUs: (workUs) => set({ workUs }),
     setTickMs: (tickMs) => set({ tickMs }),
-    clearLog: () => set({ liveLog: [] }),
+    clearLog: () => set({ liveLog: [], liveEvents: [] }),
 
     runLive: async () => {
       const { processes, algo, quantum, contextSwitch, liveMode, ipc, workUs, tickMs, view } = get()
@@ -257,26 +292,38 @@ export const useStudio = create<StudioStore>((set, get) => {
       currentAbort = new AbortController()
       const signal = currentAbort.signal
 
-      set({ liveRunning: true, liveLog: [], sim: 'working', status: 'running', error: null })
+      set({ liveRunning: true, liveLog: [], liveEvents: [], sim: 'working', status: 'running', error: null })
+
+      const req = {
+        processes,
+        algo,
+        ...(algo === 'rr' ? { quantum } : {}),
+        contextSwitch,
+        live: true as const,
+        ipc,
+        workUs,
+        tickMs,
+      }
 
       try {
-        const req = {
-          processes,
-          algo,
-          ...(algo === 'rr' ? { quantum } : {}),
-          contextSwitch,
-          live: true,
-          ipc,
-          workUs,
-          tickMs,
-        }
+        await streamLive(req, (ev: LiveStreamEvent) => {
+          if (signal.aborted) return
+          const line = formatLiveEvent(ev)
+          set((s) => ({
+            liveLog: [...s.liveLog, line],
+            liveEvents: [...s.liveEvents, ev],
+          }))
+        }, signal)
+
+        if (signal.aborted) return
+
+        // Stream ended — fetch the full trace JSON from /api/run for Gantt/metrics
         const result = await runLive(req, signal)
         if (signal.aborted) return
 
         const total = totalTime(result.trace)
         set({
           trace: result.trace,
-          liveLog: result.log,
           sim: 'fresh',
           t: Math.min(get().t, total),
           playing: false,
