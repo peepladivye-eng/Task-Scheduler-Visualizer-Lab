@@ -82,6 +82,8 @@ struct ProcessState {
     int turnaround;
     int response;
     int os_pid;       // -1 until fork() (Phase 2)
+    double cpu_ms;    // CPU time in ms from getrusage
+    long max_rss_kb;  // Max RSS in KB from getrusage
 };
 
 // ── Timeline segment ─────────────────────────────────────────────────────────

@@ -119,6 +119,9 @@ SimResult simulate_with_workers(const SimConfig& cfg,
                         result.processes[it].os_pid,
                         ws.cpu_ms, ws.max_rss_kb);
                 }
+                // Store CPU time in process for the report
+                result.processes[it].cpu_ms = ws.cpu_ms;
+                result.processes[it].max_rss_kb = ws.max_rss_kb;
             }
 
             // Pace for visualization (optional).

@@ -224,10 +224,22 @@ int main(int argc, char* argv[]) {
             write_trace_json(f, result, met);
             std::fprintf(f, "\n");
             std::fclose(f);
-            write_table(stdout, result, met);
+            if (live_mode && log_mode) {
+                // Full WSL report on stderr; JSON was saved to file
+                write_live_report(stderr, result, met);
+            } else {
+                write_table(stdout, result, met);
+            }
         } else {
-            write_trace_json(stdout, result, met);
-            std::printf("\n");
+            if (live_mode && log_mode) {
+                // Full WSL report on stderr; JSON on stdout
+                write_live_report(stderr, result, met);
+                write_trace_json(stdout, result, met);
+                std::printf("\n");
+            } else {
+                write_trace_json(stdout, result, met);
+                std::printf("\n");
+            }
         }
     }
     return 0;
