@@ -43,10 +43,12 @@ SimResult simulate_with_workers(const SimConfig& cfg,
 
     // 2. Set up event sink
     std::shared_ptr<IEventSink> sink = live.sink;
+    std::shared_ptr<TerminalSink> term_sink = nullptr;
     if (!sink) {
         auto composite = std::make_shared<CompositeEventSink>();
         if (live.log_mode) {
-            composite->add_sink(std::make_shared<TerminalSink>(stderr));
+            term_sink = std::make_shared<TerminalSink>(stderr);
+            composite->add_sink(term_sink);
         }
         if (live.ndjson_mode) {
             composite->add_sink(std::make_shared<NdjsonSink>(stdout));
@@ -61,6 +63,13 @@ SimResult simulate_with_workers(const SimConfig& cfg,
     opt.tick_ms  = live.tick_ms;
     opt.log_mode = false; // We handle logging via IEventSink
     auto backend = make_backend(live.ipc, opt);
+
+    if (term_sink) {
+        const char* algo_str = algo_name(cfg.algo);
+        const char* ipc_str = (live.ipc == Ipc::Pipe) ? "pipe" : "signal";
+        term_sink->print_header(::getpid(), ::getpgrp(), algo_str,
+                                cfg.quantum, cfg.cs_cost, ipc_str, inputs.size());
+    }
 
     // 4. Map logical pid -> index into result.processes
     std::unordered_map<int, size_t> pid_to_idx;

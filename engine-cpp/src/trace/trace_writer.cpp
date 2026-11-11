@@ -1,7 +1,35 @@
-﻿#include "../../include/trace/trace_writer.hpp"
+#include "../../include/trace/trace_writer.hpp"
 #include <cstdio>
+#include <cstring>
+#include <cstdlib>
+#include <algorithm>
+
+#ifdef __linux__
+#include <unistd.h>
+#include <sys/ioctl.h>
+#endif
 
 namespace sched {
+
+static const char* GANTT_PALETTE[] = {
+    "\033[36m", // Cyan
+    "\033[32m", // Green
+    "\033[33m", // Yellow
+    "\033[35m", // Magenta
+    "\033[34m", // Blue
+    "\033[96m", // Bright Cyan
+    "\033[92m", // Bright Green
+    "\033[93m"  // Bright Yellow
+};
+
+static inline const char* get_pid_color(int pid, bool use_color) {
+    if (!use_color || pid <= 0) return "";
+    return GANTT_PALETTE[(pid - 1) % 8];
+}
+
+static inline const char* get_reset_color(bool use_color) {
+    return use_color ? "\033[0m" : "";
+}
 
 void write_trace_json(std::FILE* f, const SimResult& r, const Metrics& m) {
     const auto& cfg = r.cfg;
@@ -140,53 +168,107 @@ void write_live_report(std::FILE* f, const SimResult& r, const Metrics& m) {
     std::fprintf(f, "  Processes : %zu\n\n", r.processes.size());
 
     // ── ASCII Gantt chart ────────────────────────────────────────────────────
-    // Scale: 1 tick = 1 char, max 60 chars wide
+    bool is_tty = false;
+#ifdef __linux__
+    if (f) is_tty = (::isatty(::fileno(f)) != 0);
+#endif
+    bool no_color = (std::getenv("NO_COLOR") != nullptr);
+    bool use_color = is_tty && !no_color;
+
+    int term_width = 80;
+#ifdef __linux__
+    if (f) {
+        struct winsize ws{};
+        if (::ioctl(::fileno(f), TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
+            term_width = ws.ws_col;
+        }
+    }
+#endif
+    int avail_width = term_width - 20;
+    if (avail_width < 20) avail_width = 20;
+
     int total = r.total_time;
     int scale = 1;
-    while (total / scale > 60) scale++;
+    while ((total + scale - 1) / scale > avail_width) scale++;
 
-    std::fprintf(f, "  GANTT CHART (1 char = %d tick%s)\n", scale, scale>1?"s":"");
-    std::fprintf(f, "  ");
-    for (int t = 0; t <= total; t += scale) {
-        if (t % (scale * 5) == 0) std::fprintf(f, "%-5d", t);
+    if (scale > 1) {
+        std::fprintf(f, "  GANTT CHART (1 column = %d ticks)\n", scale);
+    } else {
+        std::fprintf(f, "  GANTT CHART (1 column = 1 tick)\n");
+    }
+
+    int cols = (total + scale - 1) / scale;
+
+    // Timeline ruler header
+    std::fprintf(f, "  %-12s", "");
+    for (int c = 0; c < cols; ++c) {
+        int t = c * scale;
+        if (c % 5 == 0) {
+            std::fprintf(f, "%-5d", t);
+        }
     }
     std::fprintf(f, "\n");
 
-    // One row per process
+    // Process rows
     for (const auto& p : r.processes) {
         char osPidBuf[32] = "";
         if (p.os_pid > 0) std::snprintf(osPidBuf, sizeof(osPidBuf), "[%d]", p.os_pid);
-        std::fprintf(f, "  P%-2d%8s │", p.pid, osPidBuf);
+        std::fprintf(f, "  %sP%-2d%8s%s │",
+            get_pid_color(p.pid, use_color), p.pid, osPidBuf, get_reset_color(use_color));
 
-        int col = 0;
-        int cols = (total + scale - 1) / scale;
         for (int c = 0; c < cols; c++) {
             int t0 = c * scale;
             // Find what this process is doing at tick t0
             const char* ch = " ";
+            bool is_run = false;
             for (const auto& seg : r.timeline) {
                 if (seg.t_start <= t0 && t0 < seg.t_end && seg.pid == p.pid) {
-                    if (seg.type == SegType::RUN) ch = "█";
-                    else if (seg.type == SegType::CS) ch = "░";
+                    if (seg.type == SegType::RUN) {
+                        ch = "█";
+                        is_run = true;
+                    } else if (seg.type == SegType::CS) {
+                        ch = "░";
+                    }
                     break;
                 }
             }
-            std::fprintf(f, "%s", ch);
-            col++;
+            if (is_run) {
+                std::fprintf(f, "%s%s%s", get_pid_color(p.pid, use_color), ch, get_reset_color(use_color));
+            } else {
+                std::fprintf(f, "%s", ch);
+            }
         }
         std::fprintf(f, "│\n");
-        (void)col;
     }
+
+    // Dedicated CPU row
+    std::fprintf(f, "  CPU         │");
+    for (int c = 0; c < cols; ++c) {
+        int t0 = c * scale;
+        int running_pid = -1;
+        for (const auto& seg : r.timeline) {
+            if (seg.t_start <= t0 && t0 < seg.t_end && seg.type == SegType::RUN) {
+                running_pid = seg.pid;
+                break;
+            }
+        }
+        if (running_pid > 0) {
+            std::fprintf(f, "%s%d%s", get_pid_color(running_pid, use_color),
+                         running_pid % 10, get_reset_color(use_color));
+        } else {
+            std::fprintf(f, " ");
+        }
+    }
+    std::fprintf(f, "│\n");
 
     // Timeline ruler
     std::fprintf(f, "  %-12s└", "");
-    for (int c = 0; c < (total + scale - 1) / scale; c++)
+    for (int c = 0; c < cols; c++)
         std::fprintf(f, "─");
     std::fprintf(f, "┘\n");
     std::fprintf(f, "  %-12s 0", "");
-    for (int t = scale; t <= total; t += scale) {
-        if (t % (scale * 5) == 0 || t == total)
-            std::fprintf(f, "%*d", scale * 5, t);
+    for (int c = 5; c <= cols; c += 5) {
+        std::fprintf(f, "%5d", c * scale);
     }
     std::fprintf(f, "\n\n");
 
