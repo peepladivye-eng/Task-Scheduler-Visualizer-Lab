@@ -24,8 +24,8 @@ See: `.planning/PROJECT.md` (updated 2026-11-12)
 
 Phase: 1 of 5 (Real-time event pipeline)
 Plan: 0 of 2 in current phase
-Status: Ready to plan (`/gsd-plan-phase 1`)
-Last activity: 2026-11-12 — Initialized project from brief and discussed phase specifications
+Status: Ready to execute (`/gsd-execute-phase 1` or `/gsd-fast 01-01`)
+Last activity: 2026-11-12 — Planned Phase 1 (01-01 and 01-02 created)
 
 Progress: [░░░░░░░░░░] 0%
 

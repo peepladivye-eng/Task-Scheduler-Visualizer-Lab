@@ -26,8 +26,8 @@ Transform the CPU scheduler lab into a genuine OS process scheduler experience o
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Audit log vs strace & design `IEventSink` architecture
-- [ ] 01-02: Implement `IEventSink` and wire through `execution_controller`, `signal_backend`, and `pipe_backend`
+- [ ] 01-01: Event sink architecture, LiveEvent model, Trace/Ndjson/Terminal sinks, and strace audit
+- [ ] 01-02: Wire real-time event emission into execution controller, backends, arrival forking, and CLI
 
 ---
 
