@@ -7,16 +7,16 @@
 
 ### Pipeline & Event Architecture (PIPE)
 
-- [ ] **PIPE-01**: Unified `IEventSink` interface implemented in `engine-cpp` supporting multiple sinks (TraceCollector, TerminalSink, NdjsonSink).
-- [ ] **PIPE-02**: Immediate event emission on syscall returns:
+- [x] **PIPE-01**: Unified `IEventSink` interface implemented in `engine-cpp` supporting multiple sinks (TraceCollector, TerminalSink, NdjsonSink).
+- [x] **PIPE-02**: Immediate event emission on syscall returns:
   - `ARRIVE`: child `fork()` returns + initial child `SIGSTOP` detected by `wait4(WUNTRACED)`.
   - `DISPATCH`: parent sends `SIGCONT` via `kill(pid, SIGCONT)`.
   - `RUN`: real tick executed (`unit_of_work`).
   - `PREEMPT`: child stops with `SIGSTOP`, parent `wait4(WUNTRACED)` returns.
   - `EXIT`: child completes burst, exits cleanly, parent reaps with `wait4` and collects `rusage` (`cpu_ms`, `max_rss_kb`).
   - `CLEANUP`: parent sends `kill(-pgid, SIGKILL)` and verifies reaped count and zero zombies.
-- [ ] **PIPE-03**: Remove all legacy code that reconstructs logs or events retroactively from the completed trace.
-- [ ] **PIPE-04**: Audit current log against `strace` output and document missing or synthetic events.
+- [x] **PIPE-03**: Remove all legacy code that reconstructs logs or events retroactively from the completed trace.
+- [x] **PIPE-04**: Audit current log against `strace` output and document missing or synthetic events.
 
 ### WSL Terminal Experience (TERM)
 
@@ -73,7 +73,7 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PIPE-01, PIPE-02, PIPE-03, PIPE-04 | Phase 1 | Pending |
+| PIPE-01, PIPE-02, PIPE-03, PIPE-04 | Phase 1 | Complete |
 | TERM-01, TERM-02, TERM-03, TERM-04, TERM-05, TERM-06 | Phase 2 | Pending |
 | ROBUST-01, ROBUST-02, ROBUST-03, ROBUST-04 | Phase 3 | Pending |
 | WEB-01, WEB-02, WEB-03, WEB-04, WEB-05 | Phase 4 | Pending |

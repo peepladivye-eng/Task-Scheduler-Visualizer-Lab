@@ -6,7 +6,7 @@ Transform the CPU scheduler lab into a genuine OS process scheduler experience o
 
 ## Phases
 
-- [ ] **Phase 1: Real-time event pipeline** - Unified event sink interface (trace, NDJSON, terminal) emitting on real syscall return; eliminate post-trace log reconstruction.
+- [x] **Phase 1: Real-time event pipeline** - Unified event sink interface (trace, NDJSON, terminal) emitting on real syscall return; eliminate post-trace log reconstruction.
 - [ ] **Phase 2: WSL terminal experience** - Header, real-time syscall formatted logs, flicker-free live ANSI Gantt on TTY, process table, and final report.
 - [ ] **Phase 3: Kill and cleanup visibility plus robustness tests** - Zero-leak process group cleanup, PR_SET_PDEATHSIG, deterministic CLEANUP logs, and extensive robustness test harness.
 - [ ] **Phase 4: Web mirrors the same events** - server.js /api/live NDJSON streaming, client disconnect aborts, and web UI mirror without design changes.
@@ -26,8 +26,8 @@ Transform the CPU scheduler lab into a genuine OS process scheduler experience o
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Event sink architecture, LiveEvent model, Trace/Ndjson/Terminal sinks, and strace audit
-- [ ] 01-02: Wire real-time event emission into execution controller, backends, arrival forking, and CLI
+- [x] 01-01: Event sink architecture, LiveEvent model, Trace/Ndjson/Terminal sinks, and strace audit
+- [x] 01-02: Wire real-time event emission into execution controller, backends, arrival forking, and CLI
 
 ---
 
