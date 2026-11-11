@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { useMemo } from 'react'
 import type { Algo, CompareTrace, ProcInput, Trace } from '../types/trace'
-import { runSimulation, runCompare, pingEngine, EngineError } from '../lib/api'
+import { runSimulation, runCompare, runLive, pingEngine, EngineError } from '../lib/api'
 import { deriveState, totalTime, type DerivedState } from '../lib/deriveState'
 import { PRESETS } from '../lib/presets.generated'
 import { validateInputs, type InputProblem } from '../lib/validate'
@@ -28,6 +28,11 @@ interface StudioState {
   // Live mode (fork real child processes — Linux/WSL2 only)
   liveMode: boolean
   liveModeAvailable: boolean   // set by /api/health response
+  ipc: 'signal' | 'pipe'
+  workUs: number
+  tickMs: number
+  liveLog: string[]             // log lines from the engine --log output
+  liveRunning: boolean          // true while a live run is in progress
 
   // Status (new reactive pipeline states)
   sim: 'idle' | 'working' | 'fresh' | 'invalid' | 'error'
@@ -48,6 +53,11 @@ interface StudioActions {
   setView: (v: 'single' | 'compare') => void
   setT: (t: number) => void
   setLiveMode: (v: boolean) => void
+  setIpc: (v: 'signal' | 'pipe') => void
+  setWorkUs: (v: number) => void
+  setTickMs: (v: number) => void
+  runLive: () => Promise<void>
+  clearLog: () => void
   play: () => void
   pause: () => void
   toggle: () => void
@@ -121,7 +131,8 @@ export const useStudio = create<StudioStore>((set, get) => {
           algo,
           ...(algo === 'rr' ? { quantum } : {}),
           contextSwitch,
-          live: get().liveMode,
+          // Auto-run always uses simulate (live runs are manual only)
+          live: false,
         }
         const result = await runSimulation(req, signal)
         // Check if this result is still current
@@ -164,6 +175,11 @@ export const useStudio = create<StudioStore>((set, get) => {
     speed: 1,
     liveMode: false,
     liveModeAvailable: false,
+    ipc: 'signal',
+    workUs: 200,
+    tickMs: 200,
+    liveLog: [],
+    liveRunning: false,
     sim: 'fresh', // Start with preset loaded
     problems: [],
     runSeq: 0,
@@ -223,7 +239,61 @@ export const useStudio = create<StudioStore>((set, get) => {
 
     setLiveMode: (v) => {
       set({ liveMode: v })
+      // When toggling live mode, auto-run still does simulate for preview
       scheduleRun()
+    },
+
+    setIpc: (ipc) => set({ ipc }),
+    setWorkUs: (workUs) => set({ workUs }),
+    setTickMs: (tickMs) => set({ tickMs }),
+    clearLog: () => set({ liveLog: [] }),
+
+    runLive: async () => {
+      const { processes, algo, quantum, contextSwitch, liveMode, ipc, workUs, tickMs, view } = get()
+      if (!liveMode || view === 'compare') return
+
+      // Abort any previous auto-run
+      if (currentAbort) currentAbort.abort()
+      currentAbort = new AbortController()
+      const signal = currentAbort.signal
+
+      set({ liveRunning: true, liveLog: [], sim: 'working', status: 'running', error: null })
+
+      try {
+        const req = {
+          processes,
+          algo,
+          ...(algo === 'rr' ? { quantum } : {}),
+          contextSwitch,
+          live: true,
+          ipc,
+          workUs,
+          tickMs,
+        }
+        const result = await runLive(req, signal)
+        if (signal.aborted) return
+
+        const total = totalTime(result.trace)
+        set({
+          trace: result.trace,
+          liveLog: result.log,
+          sim: 'fresh',
+          t: Math.min(get().t, total),
+          playing: false,
+          liveRunning: false,
+          engineOnline: true,
+          status: 'idle',
+        })
+      } catch (err: unknown) {
+        if (signal.aborted) return
+        const msg = err instanceof EngineError ? err.message : 'Unknown error'
+        set({
+          sim: 'error',
+          error: msg,
+          status: 'error',
+          liveRunning: false,
+        })
+      }
     },
 
     setT: (t) => {

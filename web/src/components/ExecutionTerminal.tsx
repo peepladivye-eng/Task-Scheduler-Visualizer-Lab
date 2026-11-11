@@ -104,6 +104,7 @@ export default function ExecutionTerminal() {
   const trace = useStudio((s) => s.trace)
   const t     = useStudio((s) => s.t)
   const liveMode = useStudio((s) => s.liveMode)
+  const liveLog = useStudio((s) => s.liveLog)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const lines = buildLog(trace as any, t, liveMode)
@@ -113,7 +114,7 @@ export default function ExecutionTerminal() {
   useEffect(() => {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [visible.length])
+  }, [visible.length, liveLog.length])
 
   return (
     <div className="sheet space-y-3">
@@ -135,28 +136,41 @@ export default function ExecutionTerminal() {
       >
         {!trace ? (
           <div className="text-muted italic">Run a simulation to see the execution log.</div>
-        ) : visible.length === 0 ? (
+        ) : visible.length === 0 && liveLog.length === 0 ? (
           <div className="text-muted italic">Waiting for t=0…</div>
         ) : (
-          <AnimatePresence initial={false}>
-            {visible.map((line) => (
-              <motion.div
-                key={line.key}
-                initial={{ opacity: 0, x: -4 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={spring.snappy}
-                className="flex items-start gap-2 leading-relaxed"
-              >
-                <span className="text-muted tabular-nums flex-shrink-0">
-                  t={formatTime(line.t)}
-                </span>
-                <span className={`font-bold flex-shrink-0 w-16 ${line.color}`}>
-                  {line.tag}
-                </span>
-                <span className="text-ink/70 break-all">{line.text}</span>
-              </motion.div>
-            ))}
-          </AnimatePresence>
+          <>
+            <AnimatePresence initial={false}>
+              {visible.map((line) => (
+                <motion.div
+                  key={line.key}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={spring.snappy}
+                  className="flex items-start gap-2 leading-relaxed"
+                >
+                  <span className="text-muted tabular-nums flex-shrink-0">
+                    t={formatTime(line.t)}
+                  </span>
+                  <span className={`font-bold flex-shrink-0 w-16 ${line.color}`}>
+                    {line.tag}
+                  </span>
+                  <span className="text-ink/70 break-all">{line.text}</span>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+            {liveLog.length > 0 && (
+              <>
+                <div className="border-t border-ink/10 my-2" />
+                <div className="text-xs font-mono text-good mb-1">— Live engine output —</div>
+                {liveLog.map((line, i) => (
+                  <div key={`live-${i}`} className="text-ink/60 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+                    {line}
+                  </div>
+                ))}
+              </>
+            )}
+          </>
         )}
       </div>
     </div>

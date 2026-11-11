@@ -89,4 +89,13 @@ export interface RunRequest {
   quantum?: number
   contextSwitch?: number
   live?: boolean   // true = fork real child workers (Linux only)
+  ipc?: 'signal' | 'pipe'
+  workUs?: number
+  tickMs?: number
+}
+
+// Response from live mode: trace JSON + log lines from the engine
+export interface LiveResponse {
+  trace: Trace
+  log: string[]
 }

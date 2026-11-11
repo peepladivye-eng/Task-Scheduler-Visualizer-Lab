@@ -1,4 +1,4 @@
-import type { RunRequest, Trace, CompareTrace } from '../types/trace'
+import type { RunRequest, Trace, CompareTrace, LiveResponse } from '../types/trace'
 
 /** Thrown when the engine returns an error or is unreachable. */
 export class EngineError extends Error {
@@ -36,8 +36,48 @@ export async function runSimulation(
     throw new EngineError(msg)
   }
 
+  // Live mode returns {trace, log}; simulate returns Trace directly
   try {
-    return (await res.json()) as Trace
+    const body = await res.json()
+    if (req.live && body.trace) {
+      return body.trace as Trace
+    }
+    return body as Trace
+  } catch {
+    throw new EngineError('Bad response from engine')
+  }
+}
+
+/** POST to /api/run with live=true and return trace + log lines. */
+export async function runLive(
+  req: RunRequest,
+  signal?: AbortSignal,
+): Promise<LiveResponse> {
+  let res: Response
+  try {
+    res = await fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...req, live: true }),
+      signal,
+    })
+  } catch {
+    throw new EngineError('Engine offline')
+  }
+
+  if (!res.ok) {
+    let msg = 'Engine error'
+    try {
+      const body = await res.json() as { error?: string }
+      if (typeof body.error === 'string') msg = body.error
+    } catch {
+      // ignore
+    }
+    throw new EngineError(msg)
+  }
+
+  try {
+    return (await res.json()) as LiveResponse
   } catch {
     throw new EngineError('Bad response from engine')
   }

@@ -19,6 +19,7 @@ import Transport from './components/Transport'
 import CommandPalette from './components/CommandPalette'
 import Tour, { useTour } from './components/Tour'
 import CompareView from './components/CompareView'
+import LiveControls from './components/LiveControls'
 
 export default function App() {
   const [width, setWidth] = React.useState(typeof window !== 'undefined' ? window.innerWidth : 1920)
@@ -90,6 +91,7 @@ export default function App() {
                   <ReadyQueue />
                   <div data-tour="narrator"><Narrator /></div>
                   <PredictPanel />
+                  {view === 'single' && <LiveControls />}
                 </div>
                 <ExecutionTerminal />
               </div>

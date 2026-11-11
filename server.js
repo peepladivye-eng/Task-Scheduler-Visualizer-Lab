@@ -66,7 +66,7 @@ function readBody(req, maxBytes, cb) {
 function apiHealth(req, res) {
     setCORS(res);
     res.writeHead(200, {'Content-Type':'application/json'});
-    res.end(JSON.stringify({ok:true, engine:'scheduler_cpp', live:true}));
+    res.end(JSON.stringify({ok:true, engine:'scheduler_cpp', live:true, live_mode_supported:true}));
 }
 
 function apiRun(req, res) {
@@ -90,6 +90,7 @@ function apiRun(req, res) {
             res.end(JSON.stringify({error:'processes must be an array of 1..64'})); return;
         }
         var seenPids = {};
+        var totalBurst = 0;
         for (var i = 0; i < procs.length; i++) {
             var p = procs[i];
             if (!Number.isInteger(p.pid)      || p.pid      < 1     || p.pid      > 1000000 ||
@@ -104,6 +105,7 @@ function apiRun(req, res) {
                 res.end(JSON.stringify({error:'duplicate pid: ' + p.pid})); return;
             }
             seenPids[p.pid] = true;
+            totalBurst += p.burst;
         }
 
         var validAlgos = ['fcfs','sjf','srtf','priority','priority-p','rr','compare'];
@@ -125,6 +127,30 @@ function apiRun(req, res) {
 
         var liveModeRequested = !!(data.live);
 
+        // Live mode limits and IPC options
+        var ipc    = data.ipc    || 'signal';
+        var workUs = parseInt(data.workUs) || 200;
+        var tickMs = parseInt(data.tickMs) || 0;
+
+        if (ipc !== 'signal' && ipc !== 'pipe') {
+            res.writeHead(400, {'Content-Type':'application/json'});
+            res.end(JSON.stringify({error:'ipc must be signal or pipe'})); return;
+        }
+        if (workUs < 0 || workUs > 100000) {
+            res.writeHead(400, {'Content-Type':'application/json'});
+            res.end(JSON.stringify({error:'workUs must be 0..100000'})); return;
+        }
+        if (tickMs < 0 || tickMs > 1000) {
+            res.writeHead(400, {'Content-Type':'application/json'});
+            res.end(JSON.stringify({error:'tickMs must be 0..1000'})); return;
+        }
+
+        // Live mode burst limit
+        if (liveModeRequested && totalBurst > 5000) {
+            res.writeHead(400, {'Content-Type':'application/json'});
+            res.end(JSON.stringify({error:'live mode supports at most 5000 total burst ticks, got ' + totalBurst})); return;
+        }
+
         // Write temp input file
         var tmpDir  = fs.mkdtempSync(path.join(os.tmpdir(), 'sched-'));
         var tmpFile = path.join(tmpDir, 'input.txt');
@@ -138,23 +164,44 @@ function apiRun(req, res) {
         } else {
             args = ['--algo', data.algo, '--input', tmpFile, '--context-switch', String(cs)];
             if (data.algo === 'rr') args.push('--quantum', String(q));
-            if (liveModeRequested)  args.push('--mode', 'live');
+            if (liveModeRequested) {
+                args.push('--mode', 'live', '--ipc', ipc, '--work-us', String(workUs));
+                if (tickMs > 0) args.push('--tick-ms', String(tickMs));
+                args.push('--log');
+            }
         }
 
-        var timeout = liveModeRequested ? 15000 : 10000;
+        var timeout = liveModeRequested ? 30000 : 10000;
 
         cp.execFile(BINARY, args, {timeout: timeout, maxBuffer: 32*1024*1024}, function(err, stdout, stderr) {
             try { fs.unlinkSync(tmpFile); fs.rmdirSync(tmpDir); } catch(e) {}
 
             if (err) {
-                var msg = stderr ? stderr.replace(/^error:\s*/i,'').trim()
+                var msg = stderr ? stderr.split('\n').filter(function(l){return l.match(/^error:/);})[0]
                                  : (err.message || 'engine error');
+                if (msg) msg = msg.replace(/^error:\s*/i,'').trim();
                 res.writeHead(400, {'Content-Type':'application/json'});
-                res.end(JSON.stringify({error: msg})); return;
+                res.end(JSON.stringify({error: msg || 'engine error'})); return;
             }
-            console.log('[engine] ' + data.algo + ' ' + (liveModeRequested?'live':'sim') + ' -> ' + procs.length + ' procs');
-            res.writeHead(200, {'Content-Type':'application/json'});
-            res.end(stdout);
+
+            // Echo log lines to server terminal
+            if (liveModeRequested && stderr) {
+                stderr.split('\n').forEach(function(line) {
+                    if (line.trim()) console.log('[engine] ' + line);
+                });
+            }
+
+            console.log('[engine] ' + data.algo + ' ' + (liveModeRequested?'live('+ipc+')':'sim') + ' -> ' + procs.length + ' procs');
+
+            if (liveModeRequested) {
+                // Return trace + log lines for live mode
+                var logLines = stderr ? stderr.split('\n').filter(function(l){ return l.trim() && !l.match(/^error:/); }) : [];
+                res.writeHead(200, {'Content-Type':'application/json'});
+                res.end(JSON.stringify({trace: JSON.parse(stdout), log: logLines}));
+            } else {
+                res.writeHead(200, {'Content-Type':'application/json'});
+                res.end(stdout);
+            }
         });
     });
 }
