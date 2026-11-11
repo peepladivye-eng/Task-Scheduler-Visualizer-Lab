@@ -86,3 +86,26 @@ Array (simple, O(n) for priority-based pick), linked list (O(1) insert/remove), 
 
 **Q25. Why is SRTF theoretically optimal but rarely used in practice?**
 It minimizes average waiting time, but requires knowing remaining burst time at all times (impossible in general-purpose OS), has high preemption overhead, and can starve long processes indefinitely.
+
+
+## Implementation Details (fork, IPC, waitpid)
+
+**Q25. What does fork() do?**
+`fork()` creates an exact copy of the calling process. Parent receives child's PID (> 0), child receives 0. Both continue from the same point.
+
+**Q26. What is the difference between logical PID and OS PID?**
+- Logical PID: our scheduling label (P1, P2, P3)
+- OS PID: actual identifier assigned by Linux kernel after fork()
+These are different. P1 might have OS PID 1247.
+
+**Q27. What is a pipe and why two pipes per worker?**
+A pipe is a unidirectional communication channel. We need two: one for parent→child (instructions) and one for child→parent (acknowledgements).
+
+**Q28. What is EINTR and how do you handle it?**
+EINTR means a system call was interrupted by a signal. We retry in a loop until the operation completes.
+
+**Q29. What is a zombie process?**
+A process that finished executing but whose exit status hasn't been collected by waitpid(). It stays in the process table until the parent reads its status. We prevent this by calling waitpid() for every child.
+
+**Q30. Does your application control the Linux kernel scheduler?**
+No. We implement a **user-space scheduling experiment**: the parent decides which child is *permitted to execute work* via IPC. The kernel continues its own scheduling normally.
