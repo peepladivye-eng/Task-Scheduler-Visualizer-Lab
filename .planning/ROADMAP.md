@@ -44,8 +44,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Terminal event formatting & ANSI live Gantt renderer
-- [ ] 02-02: Terminal width fitting, color handling, and final execution report
+- [ ] 02-01: Header, formatting, color coding, and live in-place Gantt renderer
+- [ ] 02-02: Terminal width auto-fitting, scale calculation, CPU row, and final report
 
 ---
 
