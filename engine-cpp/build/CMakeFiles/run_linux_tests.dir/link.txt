@@ -1,1 +1,0 @@
-/usr/bin/c++ -g CMakeFiles/run_linux_tests.dir/tests/test_linux_process.cpp.o CMakeFiles/run_linux_tests.dir/src/ipc/pipe_manager.cpp.o CMakeFiles/run_linux_tests.dir/src/process/child_worker.cpp.o CMakeFiles/run_linux_tests.dir/src/process/process_manager.cpp.o -o run_linux_tests 

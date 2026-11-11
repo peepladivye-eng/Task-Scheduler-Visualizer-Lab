@@ -1,6 +1,0 @@
-/mnt/c/Users/Lenovo/Desktop/Divye/NSUT/OS project/engine-cpp/build/CMakeFiles/scheduler_cpp.dir
-/mnt/c/Users/Lenovo/Desktop/Divye/NSUT/OS project/engine-cpp/build/CMakeFiles/run_tests.dir
-/mnt/c/Users/Lenovo/Desktop/Divye/NSUT/OS project/engine-cpp/build/CMakeFiles/run_linux_tests.dir
-/mnt/c/Users/Lenovo/Desktop/Divye/NSUT/OS project/engine-cpp/build/CMakeFiles/test.dir
-/mnt/c/Users/Lenovo/Desktop/Divye/NSUT/OS project/engine-cpp/build/CMakeFiles/edit_cache.dir
-/mnt/c/Users/Lenovo/Desktop/Divye/NSUT/OS project/engine-cpp/build/CMakeFiles/rebuild_cache.dir

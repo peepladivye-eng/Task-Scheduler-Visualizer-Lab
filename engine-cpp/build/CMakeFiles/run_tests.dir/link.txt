@@ -1,1 +1,0 @@
-/usr/bin/c++ -g CMakeFiles/run_tests.dir/tests/test_main.cpp.o CMakeFiles/run_tests.dir/src/parser/input_parser.cpp.o CMakeFiles/run_tests.dir/src/scheduler/simulation.cpp.o CMakeFiles/run_tests.dir/src/metrics/metrics.cpp.o CMakeFiles/run_tests.dir/src/trace/trace_writer.cpp.o -o "/mnt/c/Users/Lenovo/Desktop/Divye/NSUT/OS project/bin/run_tests" 

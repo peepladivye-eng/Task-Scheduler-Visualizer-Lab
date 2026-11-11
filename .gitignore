@@ -1,8 +1,7 @@
-bin/
+﻿bin/
+engine-cpp/build/
 web/node_modules/
 web/dist/
-
 node_modules/
-
 *.exe
 *.o
