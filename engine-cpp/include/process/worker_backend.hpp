@@ -41,6 +41,15 @@ public:
 
     // Kill and reap every child. Safe to call multiple times.
     virtual void abort_all() noexcept = 0;
+
+    // Process group ID of spawned children (0 if none)
+    virtual int pgid() const noexcept { return 0; }
+
+    // Count of children successfully reaped so far
+    virtual int reaped_count() const noexcept { return 0; }
+
+    // Count of children currently alive / not yet reaped
+    virtual int live_count() const noexcept { return 0; }
 };
 
 // Forward declarations for the two concrete backends.

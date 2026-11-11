@@ -1,5 +1,6 @@
 #include "../../include/scheduler/execution_controller.hpp"
 #include "../../include/scheduler/simulation.hpp"
+#include "../../include/common/event_sink.hpp"
 
 #ifdef __linux__
 #include "../../include/process/worker_backend.hpp"
@@ -11,13 +12,12 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <cstdio>
+#include <algorithm>
 
 // Signal flags (defined in signal_backend.cpp, used here and in main.cpp).
 extern volatile sig_atomic_t g_timeout_flag;
 extern volatile sig_atomic_t g_stop_flag;
 
-// Install SIGINT/SIGTERM/SIGALRM handlers in the parent process.
-// Called once before any backend starts. Idempotent.
 static void install_signal_handlers() {
     struct sigaction sa{};
     sa.sa_handler = [](int) { g_timeout_flag = 1; };
@@ -38,102 +38,175 @@ SimResult simulate_with_workers(const SimConfig& cfg,
                                 const std::vector<ProcessInput>& inputs,
                                 const LiveParams& live) {
 #ifdef __linux__
-    // 1. Run the tick-based scheduler to get the full deterministic trace.
+    // 1. Run the tick-based scheduler to get the deterministic timeline and events.
     SimResult result = simulate(cfg, inputs);
 
-    // 2. Build the backend (signal or pipe).
-    //    Install signal handlers first so both backends handle SIGINT/SIGTERM.
+    // 2. Set up event sink
+    std::shared_ptr<IEventSink> sink = live.sink;
+    if (!sink) {
+        auto composite = std::make_shared<CompositeEventSink>();
+        if (live.log_mode) {
+            composite->add_sink(std::make_shared<TerminalSink>(stderr));
+        }
+        if (live.ndjson_mode) {
+            composite->add_sink(std::make_shared<NdjsonSink>(stdout));
+        }
+        sink = composite;
+    }
+
+    // 3. Build the backend (signal or pipe).
     install_signal_handlers();
     LiveOptions opt;
     opt.work_us  = live.work_us;
     opt.tick_ms  = live.tick_ms;
-    opt.log_mode = live.log_mode;
+    opt.log_mode = false; // We handle logging via IEventSink
     auto backend = make_backend(live.ipc, opt);
 
-    // 3. Map logical pid -> index into result.processes for os_pid lookup.
-    std::unordered_map<int, int> pid_to_idx;
-    for (size_t i = 0; i < result.processes.size(); ++i)
-        pid_to_idx[result.processes[i].pid] = (int)i;
+    // 4. Map logical pid -> index into result.processes
+    std::unordered_map<int, size_t> pid_to_idx;
+    for (size_t i = 0; i < result.processes.size(); ++i) {
+        pid_to_idx[result.processes[i].pid] = i;
+    }
 
-    // 4. Track which children have been forked and their remaining burst.
-    //    Children are forked at their arrival tick (lazy fork).
+    // Helper to find ready queue snapshot from simulated events
+    auto find_ready_queue = [&](int t, EvType type, int pid) -> std::vector<int> {
+        for (const auto& ev : result.events) {
+            if (ev.t == t && ev.type == type && ev.pid == pid) {
+                return ev.ready_queue;
+            }
+        }
+        return {};
+    };
+
     std::unordered_map<int, bool> forked;
+    std::unordered_map<int, int>  proc_ticks;
 
-    // 5. Walk the timeline. For each RUN segment, call run_tick() for each
-    //    tick in that segment. Idle/CS segments send no signals.
-    for (const auto& seg : result.timeline) {
-        if (seg.type != SegType::RUN) {
-            // Idle or context-switch ticks: optionally pace.
-            if (live.tick_ms > 0 && seg.type == SegType::IDLE) {
-                ::usleep((useconds_t)(live.tick_ms * 1000));
-            }
-            continue;
+    auto emit_cleanup = [&](int t) {
+        if (!sink) return;
+        LiveEvent ev;
+        ev.type         = LiveEventType::CLEANUP;
+        ev.t            = t;
+        ev.pgid         = backend->pgid();
+        ev.live_count   = 0;
+        ev.reaped_count = backend->reaped_count();
+        ev.total_procs  = (int)result.processes.size();
+        ev.zombies      = 0;
+        sink->on_event(ev);
+    };
+
+    // 5. Walk virtual time from t=0 to total_time
+    for (int t = 0; t < result.total_time; ++t) {
+        // Check for interruption signal
+        if (g_stop_flag) {
+            backend->abort_all();
+            emit_cleanup(t);
+            throw std::runtime_error("interrupted by signal");
         }
 
-        int pid = seg.pid;
-        int it = pid_to_idx.count(pid) ? pid_to_idx[pid] : -1;
-        if (it < 0) continue;
+        // A. Arrival at tick t: fork arriving processes
+        for (auto& proc : result.processes) {
+            if (proc.arrival == t && !forked[proc.pid]) {
+                int os_pid = backend->spawn(proc.pid, proc.burst);
+                proc.os_pid = os_pid;
+                forked[proc.pid] = true;
 
-        // Lazy fork: fork the child the first time it's scheduled.
-        if (!forked[pid]) {
-            int burst = result.processes[it].burst;
-            int os_pid = backend->spawn(pid, burst);
-            result.processes[it].os_pid = os_pid;
-            forked[pid] = true;
-
-            if (live.log_mode) {
-                std::fprintf(stderr, "[t=%4d] FORK: P%d (os_pid=%d, burst=%d)\n",
-                    seg.t_start, pid, os_pid, burst);
+                if (sink) {
+                    LiveEvent ev;
+                    ev.type       = LiveEventType::ARRIVE;
+                    ev.t          = t;
+                    ev.pid        = proc.pid;
+                    ev.os_pid     = os_pid;
+                    ev.tick_total = proc.burst;
+                    sink->on_event(ev);
+                }
             }
         }
 
-        // Run each tick in this segment individually.
-        int ticks = seg.t_end - seg.t_start;
-        for (int t = 0; t < ticks; ++t) {
-            // Check for interruption signal
-            if (g_stop_flag) {
-                backend->abort_all();
-                throw std::runtime_error("interrupted by signal");
+        // B. Find current timeline segment
+        const Segment* cur_seg = nullptr;
+        for (const auto& seg : result.timeline) {
+            if (seg.t_start <= t && t < seg.t_end) {
+                cur_seg = &seg;
+                break;
+            }
+        }
+
+        if (cur_seg && cur_seg->type == SegType::RUN) {
+            int pid = cur_seg->pid;
+            size_t it = pid_to_idx[pid];
+            int os_pid = result.processes[it].os_pid;
+
+            // DISPATCH event on first tick of segment
+            if (t == cur_seg->t_start) {
+                if (sink) {
+                    LiveEvent ev;
+                    ev.type        = LiveEventType::DISPATCH;
+                    ev.t           = t;
+                    ev.pid         = pid;
+                    ev.os_pid      = os_pid;
+                    ev.ready_queue = find_ready_queue(t, EvType::DISPATCH, pid);
+                    sink->on_event(ev);
+                }
             }
 
-            if (live.log_mode) {
-                std::fprintf(stderr, "[t=%4d] SIGCONT  P%d (os_pid=%d)\n",
-                    seg.t_start + t, pid,
-                    result.processes[it].os_pid);
+            // RUN event for this tick
+            int cur_tick = ++proc_ticks[pid];
+            if (sink) {
+                LiveEvent ev;
+                ev.type         = LiveEventType::RUN;
+                ev.t            = t;
+                ev.pid          = pid;
+                ev.os_pid       = os_pid;
+                ev.tick_current = cur_tick;
+                ev.tick_total   = result.processes[it].burst;
+                sink->on_event(ev);
             }
 
+            // Real child execution
             bool done = backend->run_tick(pid);
 
-            if (live.log_mode && !done) {
-                std::fprintf(stderr, "[t=%4d] stopped   P%d\n",
-                    seg.t_start + t, pid);
-            }
-
             if (done) {
-                // Collect stats
+                // Child finished burst and exited
                 WorkerStats ws = backend->stats(pid);
-                if (live.log_mode) {
-                    std::fprintf(stderr,
-                        "[t=%4d] COMPLETE: P%d (os_pid=%d, cpu=%.1fms, rss=%ldkb)\n",
-                        seg.t_start + t + 1, pid,
-                        result.processes[it].os_pid,
-                        ws.cpu_ms, ws.max_rss_kb);
-                }
-                // Store CPU time in process for the report
-                result.processes[it].cpu_ms = ws.cpu_ms;
+                result.processes[it].cpu_ms     = ws.cpu_ms;
                 result.processes[it].max_rss_kb = ws.max_rss_kb;
-            }
 
-            // Pace for visualization (optional).
-            if (live.tick_ms > 0) {
-                ::usleep((useconds_t)(live.tick_ms * 1000));
+                if (sink) {
+                    LiveEvent ev;
+                    ev.type        = LiveEventType::EXIT;
+                    ev.t           = t + 1;
+                    ev.pid         = pid;
+                    ev.os_pid      = os_pid;
+                    ev.cpu_ms      = ws.cpu_ms;
+                    ev.max_rss_kb  = ws.max_rss_kb;
+                    ev.exit_status = ws.exit_status;
+                    sink->on_event(ev);
+                }
+            } else if (t + 1 == cur_seg->t_end) {
+                // Segment ended but process has remaining burst -> PREEMPT
+                std::string reason = (cfg.algo == Algo::RR) ? "quantum expired" : "preempted";
+                if (sink) {
+                    LiveEvent ev;
+                    ev.type        = LiveEventType::PREEMPT;
+                    ev.t           = t + 1;
+                    ev.pid         = pid;
+                    ev.os_pid      = os_pid;
+                    ev.reason      = reason;
+                    ev.ready_queue = find_ready_queue(t + 1, EvType::PREEMPT, pid);
+                    sink->on_event(ev);
+                }
             }
+        }
+
+        // C. Pace for visualization if requested
+        if (live.tick_ms > 0) {
+            ::usleep((useconds_t)(live.tick_ms * 1000));
         }
     }
 
-    // 6. Any process that was forked but never ran its full burst
-    //    (shouldn't happen in a correct sim, but clean up just in case).
+    // 6. Cleanup
     backend->abort_all();
+    emit_cleanup(result.total_time);
 
     return result;
 

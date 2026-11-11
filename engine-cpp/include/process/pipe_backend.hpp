@@ -20,9 +20,14 @@ public:
     WorkerStats stats(int pid) const override;
     void abort_all() noexcept override;
 
+    int pgid() const noexcept override { return (int)group_; }
+    int reaped_count() const noexcept override;
+    int live_count() const noexcept override;
+
 private:
     LiveOptions opt_;
     int session_seq_ = 0;
+    pid_t group_     = 0;
 
     struct PipeEntry {
         int os_pid       = -1;

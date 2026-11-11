@@ -44,20 +44,7 @@ static void unit_of_work(int us) {
 
 namespace sched {
 
-// Install signal handlers in the parent (called once).
-static void install_parent_handlers() {
-    struct sigaction sa{};
-    sa.sa_handler = handle_alrm;
-    ::sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;  // NO SA_RESTART
-    ::sigaction(SIGALRM, &sa, nullptr);
 
-    sa.sa_handler = handle_int;
-    ::sigaction(SIGINT, &sa, nullptr);
-
-    sa.sa_handler = handle_term;
-    ::sigaction(SIGTERM, &sa, nullptr);
-}
 
 SignalBackend::SignalBackend(const LiveOptions& opt)
     : opt_(opt), group_(0), parent_(::getpid()) {
@@ -106,7 +93,7 @@ int SignalBackend::spawn(int pid, int burst) {
                 int n = ::snprintf(buf, sizeof(buf),
                     "[CHILD-%d] P%d tick %d/%d\n",
                     (int)::getpid(), pid, i, burst);
-                ::write(STDERR_FILENO, buf, (size_t)n);
+                ssize_t w = ::write(STDERR_FILENO, buf, (size_t)n); (void)w;
             }
 
             if (i == burst) ::_exit(0);
@@ -262,6 +249,22 @@ void SignalBackend::abort_all() noexcept {
 
 void SignalBackend::reap_all_killed() noexcept {
     abort_all();
+}
+
+int SignalBackend::reaped_count() const noexcept {
+    int c = 0;
+    for (const auto& kv : workers_) {
+        if (kv.second.finished) ++c;
+    }
+    return c;
+}
+
+int SignalBackend::live_count() const noexcept {
+    int c = 0;
+    for (const auto& kv : workers_) {
+        if (!kv.second.finished && kv.second.os_pid > 0) ++c;
+    }
+    return c;
 }
 
 } // namespace sched

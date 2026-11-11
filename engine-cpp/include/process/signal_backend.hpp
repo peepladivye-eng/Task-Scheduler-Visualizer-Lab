@@ -20,6 +20,10 @@ public:
     WorkerStats stats(int pid) const override;
     void abort_all() noexcept override;
 
+    int pgid() const noexcept override { return (int)group_; }
+    int reaped_count() const noexcept override;
+    int live_count() const noexcept override;
+
 private:
     LiveOptions opt_;
     pid_t       group_  = 0;    // process group for all children

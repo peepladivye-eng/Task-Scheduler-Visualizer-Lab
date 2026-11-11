@@ -78,6 +78,7 @@ int main(int argc, char* argv[]) {
     int         tick_ms    = 0;
     bool        do_compare = false;
     bool        log_mode   = false;
+    bool        ndjson_mode = false;
 
     for (int i = 1; i < argc; ++i) {
         const char* arg = argv[i];
@@ -92,12 +93,13 @@ int main(int argc, char* argv[]) {
         else if (std::strcmp(arg, "--tick-ms")        == 0) { if (++i >= argc) die("--tick-ms needs value");         tick_ms    = strict_int(argv[i], "--tick-ms"); }
         else if (std::strcmp(arg, "--compare")        == 0) { do_compare = true; }
         else if (std::strcmp(arg, "--log")            == 0) { log_mode = true; }
+        else if (std::strcmp(arg, "--ndjson")         == 0) { ndjson_mode = true; }
         else if (std::strcmp(arg, "--help")           == 0) {
             std::fprintf(stderr,
                 "Usage: scheduler_cpp --algo <fcfs|sjf|srtf|priority|priority-p|rr> "
                 "--input FILE [--quantum N] [--context-switch N] "
                 "[--mode simulate|live] [--ipc signal|pipe] "
-                "[--work-us N] [--tick-ms N] [--log] [--out FILE] [--compare]\n");
+                "[--work-us N] [--tick-ms N] [--log] [--ndjson] [--out FILE] [--compare]\n");
             return 0;
         }
         else { std::string msg = "unknown flag: " + std::string(arg); die(msg.c_str()); }
@@ -200,6 +202,7 @@ int main(int argc, char* argv[]) {
                 live.work_us = work_us;
                 live.tick_ms = tick_ms;
                 live.log_mode = log_mode;
+                live.ndjson_mode = ndjson_mode;
                 result = simulate_with_workers(cfg, procs, live);
 #else
                 result = simulate(cfg, procs);
@@ -225,18 +228,18 @@ int main(int argc, char* argv[]) {
             std::fprintf(f, "\n");
             std::fclose(f);
             if (live_mode && log_mode) {
-                // Full WSL report on stderr; JSON was saved to file
                 write_live_report(stderr, result, met);
-            } else {
+            } else if (!ndjson_mode) {
                 write_table(stdout, result, met);
             }
         } else {
             if (live_mode && log_mode) {
-                // Full WSL report on stderr; JSON on stdout
                 write_live_report(stderr, result, met);
-                write_trace_json(stdout, result, met);
-                std::printf("\n");
-            } else {
+                if (!ndjson_mode) {
+                    write_trace_json(stdout, result, met);
+                    std::printf("\n");
+                }
+            } else if (!ndjson_mode) {
                 write_trace_json(stdout, result, met);
                 std::printf("\n");
             }

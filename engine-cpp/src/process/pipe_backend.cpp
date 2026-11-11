@@ -29,6 +29,8 @@ int PipeBackend::spawn(int pid, int burst) {
 
     if (child_pid == 0) {
         // CHILD
+        if (group_ == 0) ::setpgid(0, 0);
+        else ::setpgid(0, group_);
         int instr_read = instr_pipe.read_end.release();
         int ack_write  = ack_pipe.write_end.release();
         instr_pipe.write_end.close_fd();
@@ -38,6 +40,14 @@ int PipeBackend::spawn(int pid, int burst) {
     }
 
     // PARENT
+    if (group_ == 0) {
+        ::setpgid(child_pid, 0);
+        group_ = child_pid;
+    } else {
+        ::setpgid(child_pid, group_);
+    }
+    ::setpgid(child_pid, group_);
+
     int instr_write = instr_pipe.write_end.release();
     int ack_read    = ack_pipe.read_end.release();
     instr_pipe.read_end.close_fd();
@@ -134,6 +144,9 @@ WorkerStats PipeBackend::stats(int pid) const {
 }
 
 void PipeBackend::abort_all() noexcept {
+    if (group_ > 0) {
+        ::kill(-group_, SIGKILL);
+    }
     for (auto& kv : workers_) {
         PipeEntry& e = kv.second;
         if (!e.finished && e.os_pid > 0) {
@@ -158,6 +171,22 @@ void PipeBackend::reap_one(PipeEntry& e) noexcept {
     if (e.instr_write >= 0) { ::close(e.instr_write); e.instr_write = -1; }
     if (e.ack_read    >= 0) { ::close(e.ack_read);    e.ack_read    = -1; }
     e.finished = true;
+}
+
+int PipeBackend::reaped_count() const noexcept {
+    int c = 0;
+    for (const auto& kv : workers_) {
+        if (kv.second.finished) ++c;
+    }
+    return c;
+}
+
+int PipeBackend::live_count() const noexcept {
+    int c = 0;
+    for (const auto& kv : workers_) {
+        if (!kv.second.finished && kv.second.os_pid > 0) ++c;
+    }
+    return c;
 }
 
 } // namespace sched
