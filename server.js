@@ -231,7 +231,7 @@ function shutdown() {
 process.on('SIGINT',  shutdown);
 process.on('SIGTERM', shutdown);
 
-server.listen(PORT, '127.0.0.1', function() {
+server.listen(PORT, '0.0.0.0', function() {
     console.log('Scheduler UI:  http://localhost:' + PORT);
     console.log('Engine:        ' + BINARY);
     console.log('Live mode:     enabled');
