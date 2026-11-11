@@ -4,10 +4,10 @@ gsd_state_version: '1.0'
 status: in_progress
 progress:
   total_phases: 5
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 10
-  completed_plans: 2
-  percent: 20
+  completed_plans: 4
+  percent: 40
 ---
 <!-- STATE-MD-SCHEMA:END:frontmatter -->
 
@@ -18,26 +18,27 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-11-12)
 
 **Core value:** Show in real time, as each real syscall returns, true OS process execution with real OS PIDs, live signals, child process lifecycle, and ANSI terminal Gantt visualization without synthetic delays or fake traces.
-**Current focus:** Phase 2 — WSL terminal experience
+**Current focus:** Phase 3 — Kill and cleanup visibility plus robustness tests
 
 ## Current Position
 
-Phase: 2 of 5 (WSL terminal experience)
-Plan: 0 of 2 in Phase 2
-Status: Ready to plan (`/gsd-plan-phase 2`)
-Last activity: 2026-11-12 — Executed Phase 1 (01-01 and 01-02 verified with 3000 differential runs)
+Phase: 3 of 5 (Kill and cleanup visibility plus robustness tests)
+Plan: 0 of 2 in Phase 3
+Status: Ready to plan (`/gsd-plan-phase 3`)
+Last activity: 2026-11-12 — Completed Phase 2 (Terminal experience, live Gantt, CPU row, width auto-fitting, report)
 
-Progress: [██░░░░░░░░] 20%
+Progress: [████░░░░░░] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Phase 1 duration: 15 min
+- Total plans completed: 4
+- Phase 1 & 2 completed and verified
 
 ## Key Learnings & Decisions
 
 - `engine-cpp` (C++17) in WSL2 is the sole live execution engine; `engine/` (C) is reference-only.
 - Event pipeline emits directly as POSIX syscalls return, with arrival-time forking (`t == arrival`).
 - Zero mismatches across 3,000 differential workloads between C reference, simulate, live pipe, and live signal modes.
-- `TerminalSink` and `NdjsonSink` are operational and streaming live events synchronously.
+- `TerminalSink` renders flicker-free live ANSI Gantt on TTY, plain text on non-TTY, respects `NO_COLOR`, and scales horizontally with `ioctl` column detection.
+- Final report outputs dedicated CPU row, complete process table with OS PIDs and CPU time, and summary averages.

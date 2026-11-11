@@ -7,7 +7,7 @@ Transform the CPU scheduler lab into a genuine OS process scheduler experience o
 ## Phases
 
 - [x] **Phase 1: Real-time event pipeline** - Unified event sink interface (trace, NDJSON, terminal) emitting on real syscall return; eliminate post-trace log reconstruction.
-- [ ] **Phase 2: WSL terminal experience** - Header, real-time syscall formatted logs, flicker-free live ANSI Gantt on TTY, process table, and final report.
+- [x] **Phase 2: WSL terminal experience** - Header, real-time syscall formatted logs, flicker-free live ANSI Gantt on TTY, process table, and final report.
 - [ ] **Phase 3: Kill and cleanup visibility plus robustness tests** - Zero-leak process group cleanup, PR_SET_PDEATHSIG, deterministic CLEANUP logs, and extensive robustness test harness.
 - [ ] **Phase 4: Web mirrors the same events** - server.js /api/live NDJSON streaming, client disconnect aborts, and web UI mirror without design changes.
 - [ ] **Phase 5: Repo cleanup, honest README, push to GitHub** - File and script hygiene, verified numbers, fresh clone verification, merge and push.
@@ -44,8 +44,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Header, formatting, color coding, and live in-place Gantt renderer
-- [ ] 02-02: Terminal width auto-fitting, scale calculation, CPU row, and final report
+- [x] 02-01: Header, formatting, color coding, and live in-place Gantt renderer
+- [x] 02-02: Terminal width auto-fitting, scale calculation, CPU row, and final report
 
 ---
 
