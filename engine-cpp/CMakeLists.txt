@@ -1,7 +1,7 @@
 ﻿cmake_minimum_required(VERSION 3.16)
 project(scheduler_cpp VERSION 2.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -20,6 +20,7 @@ set(ENGINE_CORE_SOURCES
     src/scheduler/execution_controller.cpp
     src/metrics/metrics.cpp
     src/trace/trace_writer.cpp
+    src/trace/event_sink.cpp
 )
 
 # ── Linux-only process management sources ────────────────────────────────────
