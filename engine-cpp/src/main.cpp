@@ -1,4 +1,4 @@
-﻿/**
+/**
  * main.cpp — CLI entry point for the C++ scheduler engine.
  *
  * --mode simulate   (default) pure tick simulation
@@ -32,6 +32,7 @@
 // Declared here so main.cpp can check exit codes after interruption.
 #ifdef __linux__
 extern volatile sig_atomic_t g_stop_flag;
+extern volatile sig_atomic_t g_sig_received;
 #endif
 
 using namespace sched;
@@ -213,9 +214,17 @@ int main(int argc, char* argv[]) {
         } catch (const std::exception& e) {
             std::fprintf(stderr, "error: %s\n", e.what());
             // Check if this was a signal-induced interruption
-            if (g_stop_flag) {
+#ifdef __linux__
+            if (g_sig_received == SIGINT) {
                 std::exit(130);  // SIGINT
             }
+            if (g_sig_received == SIGTERM) {
+                std::exit(143);  // SIGTERM
+            }
+            if (g_sig_received > 0) {
+                std::exit(128 + g_sig_received);
+            }
+#endif
             std::exit(1);
         }
 

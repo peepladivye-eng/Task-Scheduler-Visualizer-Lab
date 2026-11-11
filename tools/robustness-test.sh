@@ -123,6 +123,46 @@ for IPC in signal pipe; do
     done
     check "8_bad_flags" "$IPC" $BAD_FAIL "allRejected=$BAD_FAIL"
 
+    # 5. Watchdog (signal backend only): suspend grandchild mid-run, engine must abort and clean up
+    if [ "$IPC" = "signal" ]; then
+        printf '1 0 5 1\n' > "$TMP"
+        "$CPP" --algo fcfs --input "$TMP" --mode live --ipc signal --work-us 100000 > /dev/null 2>&1 &
+        local_pid=$!
+        # Poll for grandchild (it appears quickly after fork)
+        GC=""
+        for i in $(seq 1 20); do
+            GC=$(ps --ppid $local_pid -o pid= 2>/dev/null | head -1 | tr -d ' ')
+            [ -n "$GC" ] && break
+            sleep 0.05
+        done
+        if [ -n "$GC" ]; then
+            kill -STOP "$GC" 2>/dev/null
+        fi
+        wait $local_pid 2>/dev/null
+        EXIT_WD=$?
+        no_leftovers && WD_CLEAN=1 || WD_CLEAN=0
+        if [ $EXIT_WD -ne 0 ] && [ $WD_CLEAN -eq 1 ]; then
+            check "5_watchdog" "signal" 1 "exit=$EXIT_WD, clean=$WD_CLEAN"
+        else
+            check "5_watchdog" "signal" 0 "exit=$EXIT_WD, clean=$WD_CLEAN"
+        fi
+    fi
+
+    # 9. 20 back-to-back runs with zero leftovers
+    printf '1 0 3 1\n2 1 2 1\n' > "$TMP"
+    BACK_FAIL=0
+    for i in $(seq 1 20); do
+        "$CPP" --algo fcfs --input "$TMP" --mode live --ipc "$IPC" --work-us 0 > /dev/null 2>&1
+        R=$?
+        if [ $R -ne 0 ]; then BACK_FAIL=1; fi
+    done
+    no_leftovers && BACK_CLEAN=1 || BACK_CLEAN=0
+    if [ $BACK_FAIL -eq 0 ] && [ $BACK_CLEAN -eq 1 ]; then
+        check "9_back_to_back_20" "$IPC" 1 "allExit=0, clean=$BACK_CLEAN"
+    else
+        check "9_back_to_back_20" "$IPC" 0 "anyFail=$BACK_FAIL, clean=$BACK_CLEAN"
+    fi
+
 done
 
 rm -f "$TMP"

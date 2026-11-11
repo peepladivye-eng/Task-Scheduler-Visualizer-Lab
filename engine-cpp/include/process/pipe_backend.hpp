@@ -28,6 +28,7 @@ private:
     LiveOptions opt_;
     int session_seq_ = 0;
     pid_t group_     = 0;
+    pid_t parent_    = 0;
 
     struct PipeEntry {
         int os_pid       = -1;

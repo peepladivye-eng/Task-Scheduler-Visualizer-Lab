@@ -6,6 +6,7 @@
 
 #include <sys/wait.h>
 #include <sys/resource.h>
+#include <sys/prctl.h>
 #include <unistd.h>
 #include <signal.h>
 #include <cerrno>
@@ -15,7 +16,7 @@
 
 namespace sched {
 
-PipeBackend::PipeBackend(const LiveOptions& opt) : opt_(opt) {}
+PipeBackend::PipeBackend(const LiveOptions& opt) : opt_(opt), parent_(::getpid()) {}
 
 PipeBackend::~PipeBackend() { abort_all(); }
 
@@ -29,6 +30,9 @@ int PipeBackend::spawn(int pid, int burst) {
 
     if (child_pid == 0) {
         // CHILD
+        ::prctl(PR_SET_PDEATHSIG, SIGKILL);
+        if (::getppid() != parent_) ::_exit(1);
+
         if (group_ == 0) ::setpgid(0, 0);
         else ::setpgid(0, group_);
         int instr_read = instr_pipe.read_end.release();
@@ -96,11 +100,28 @@ bool PipeBackend::run_tick(int pid) {
 
     ipc::send_instruction(e.instr_write, instr);
 
-    ipc::Acknowledgement ack{};
-    ipc::recv_ack(e.ack_read, ack);
+    g_timeout_flag = 0;
+    ::alarm(2);
 
-    if (ack.type != ipc::AckType::UNITS_DONE)
+    ipc::Acknowledgement ack{};
+    try {
+        ipc::recv_ack(e.ack_read, ack);
+    } catch (...) {
+        ::alarm(0);
+        abort_all();
+        if (g_timeout_flag) {
+            throw std::runtime_error("run_tick: child P" + std::to_string(pid) +
+                                     " (os_pid=" + std::to_string(e.os_pid) +
+                                     ") did not finish its tick within 2s");
+        }
+        throw;
+    }
+    ::alarm(0);
+
+    if (ack.type != ipc::AckType::UNITS_DONE) {
+        abort_all();
         throw std::runtime_error("pipe_backend: unexpected ack type");
+    }
 
     --e.remaining;
 

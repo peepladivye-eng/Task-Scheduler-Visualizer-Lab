@@ -19,10 +19,7 @@
 // Declared extern in main.cpp so it can check the exit code.
 volatile sig_atomic_t g_timeout_flag = 0;
 volatile sig_atomic_t g_stop_flag    = 0;
-
-static void handle_alrm(int) { g_timeout_flag = 1; }
-static void handle_int(int)  { g_stop_flag    = 1; }
-static void handle_term(int) { g_stop_flag    = 1; }
+volatile sig_atomic_t g_sig_received = 0;
 
 // ── unit_of_work: burn exactly `us` microseconds of CPU time ─────────────────
 static void unit_of_work(int us) {

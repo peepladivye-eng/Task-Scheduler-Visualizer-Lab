@@ -5,6 +5,7 @@
 
 #ifdef __linux__
 #include <sys/wait.h>
+#include <sys/prctl.h>
 #include <unistd.h>
 #include <cerrno>
 #include <cstring>
@@ -26,6 +27,7 @@ int ProcessManager::create_worker(int logical_pid) {
     Pipe instr_pipe = Pipe::create();
     Pipe ack_pipe   = Pipe::create();
 
+    pid_t parent_pid = ::getpid();
     pid_t child_pid = ::fork();
 
     if (child_pid < 0) {
@@ -36,6 +38,9 @@ int ProcessManager::create_worker(int logical_pid) {
 
     if (child_pid == 0) {
         // ── CHILD ──────────────────────────────────────────────────────────
+        ::prctl(PR_SET_PDEATHSIG, SIGKILL);
+        if (::getppid() != parent_pid) ::_exit(1);
+
         // Keep only the ends we need; close the others.
         int instr_read  = instr_pipe.read_end.release();
         int ack_write   = ack_pipe.write_end.release();

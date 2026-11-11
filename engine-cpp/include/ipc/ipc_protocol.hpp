@@ -10,6 +10,10 @@
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <csignal>
+
+extern volatile sig_atomic_t g_timeout_flag;
+extern volatile sig_atomic_t g_stop_flag;
 #endif
 
 namespace sched {
@@ -52,9 +56,15 @@ inline void write_exact(int fd, const void* buf, size_t n) {
     const char* p = static_cast<const char*>(buf);
     size_t remaining = n;
     while (remaining > 0) {
+        if (g_stop_flag) {
+            throw std::runtime_error("write_exact: interrupted by signal");
+        }
         ssize_t written = ::write(fd, p, remaining);
         if (written < 0) {
-            if (errno == EINTR) continue;
+            if (errno == EINTR) {
+                if (g_stop_flag) throw std::runtime_error("write_exact: interrupted by signal");
+                continue;
+            }
             throw std::runtime_error(
                 std::string("write_exact failed: ") + strerror(errno));
         }
@@ -69,9 +79,19 @@ inline void read_exact(int fd, void* buf, size_t n) {
     char* p = static_cast<char*>(buf);
     size_t remaining = n;
     while (remaining > 0) {
+        if (g_timeout_flag) {
+            throw std::runtime_error("read_exact: watchdog timeout");
+        }
+        if (g_stop_flag) {
+            throw std::runtime_error("read_exact: interrupted by signal");
+        }
         ssize_t got = ::read(fd, p, remaining);
         if (got < 0) {
-            if (errno == EINTR) continue;
+            if (errno == EINTR) {
+                if (g_timeout_flag) throw std::runtime_error("read_exact: watchdog timeout");
+                if (g_stop_flag) throw std::runtime_error("read_exact: interrupted by signal");
+                continue;
+            }
             throw std::runtime_error(
                 std::string("read_exact failed: ") + strerror(errno));
         }

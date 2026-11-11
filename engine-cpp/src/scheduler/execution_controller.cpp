@@ -17,6 +17,7 @@
 // Signal flags (defined in signal_backend.cpp, used here and in main.cpp).
 extern volatile sig_atomic_t g_timeout_flag;
 extern volatile sig_atomic_t g_stop_flag;
+extern volatile sig_atomic_t g_sig_received;
 
 static void install_signal_handlers() {
     struct sigaction sa{};
@@ -25,7 +26,7 @@ static void install_signal_handlers() {
     sa.sa_flags = 0;  // NO SA_RESTART
     ::sigaction(SIGALRM, &sa, nullptr);
 
-    sa.sa_handler = [](int) { g_stop_flag = 1; };
+    sa.sa_handler = [](int s) { g_sig_received = s; g_stop_flag = 1; };
     ::sigaction(SIGINT,  &sa, nullptr);
     ::sigaction(SIGTERM, &sa, nullptr);
 }
@@ -103,121 +104,129 @@ SimResult simulate_with_workers(const SimConfig& cfg,
         sink->on_event(ev);
     };
 
-    // 5. Walk virtual time from t=0 to total_time
-    for (int t = 0; t < result.total_time; ++t) {
-        // Check for interruption signal
-        if (g_stop_flag) {
-            backend->abort_all();
-            emit_cleanup(t);
-            throw std::runtime_error("interrupted by signal");
-        }
-
-        // A. Arrival at tick t: fork arriving processes
-        for (auto& proc : result.processes) {
-            if (proc.arrival == t && !forked[proc.pid]) {
-                int os_pid = backend->spawn(proc.pid, proc.burst);
-                proc.os_pid = os_pid;
-                forked[proc.pid] = true;
-
-                if (sink) {
-                    LiveEvent ev;
-                    ev.type       = LiveEventType::ARRIVE;
-                    ev.t          = t;
-                    ev.pid        = proc.pid;
-                    ev.os_pid     = os_pid;
-                    ev.tick_total = proc.burst;
-                    sink->on_event(ev);
-                }
+    int current_t = 0;
+    try {
+        // 5. Walk virtual time from t=0 to total_time
+        for (int t = 0; t < result.total_time; ++t) {
+            current_t = t;
+            // Check for interruption signal
+            if (g_stop_flag) {
+                backend->abort_all();
+                emit_cleanup(t);
+                throw std::runtime_error("interrupted by signal");
             }
-        }
 
-        // B. Find current timeline segment
-        const Segment* cur_seg = nullptr;
-        for (const auto& seg : result.timeline) {
-            if (seg.t_start <= t && t < seg.t_end) {
-                cur_seg = &seg;
-                break;
-            }
-        }
+            // A. Arrival at tick t: fork arriving processes
+            for (auto& proc : result.processes) {
+                if (proc.arrival == t && !forked[proc.pid]) {
+                    int os_pid = backend->spawn(proc.pid, proc.burst);
+                    proc.os_pid = os_pid;
+                    forked[proc.pid] = true;
 
-        if (cur_seg && cur_seg->type == SegType::RUN) {
-            int pid = cur_seg->pid;
-            size_t it = pid_to_idx[pid];
-            int os_pid = result.processes[it].os_pid;
-
-            // DISPATCH event on first tick of segment
-            if (t == cur_seg->t_start) {
-                if (sink) {
-                    LiveEvent ev;
-                    ev.type        = LiveEventType::DISPATCH;
-                    ev.t           = t;
-                    ev.pid         = pid;
-                    ev.os_pid      = os_pid;
-                    ev.ready_queue = find_ready_queue(t, EvType::DISPATCH, pid);
-                    sink->on_event(ev);
+                    if (sink) {
+                        LiveEvent ev;
+                        ev.type       = LiveEventType::ARRIVE;
+                        ev.t          = t;
+                        ev.pid        = proc.pid;
+                        ev.os_pid     = os_pid;
+                        ev.tick_total = proc.burst;
+                        sink->on_event(ev);
+                    }
                 }
             }
 
-            // RUN event for this tick
-            int cur_tick = ++proc_ticks[pid];
-            if (sink) {
-                LiveEvent ev;
-                ev.type         = LiveEventType::RUN;
-                ev.t            = t;
-                ev.pid          = pid;
-                ev.os_pid       = os_pid;
-                ev.tick_current = cur_tick;
-                ev.tick_total   = result.processes[it].burst;
-                sink->on_event(ev);
+            // B. Find current timeline segment
+            const Segment* cur_seg = nullptr;
+            for (const auto& seg : result.timeline) {
+                if (seg.t_start <= t && t < seg.t_end) {
+                    cur_seg = &seg;
+                    break;
+                }
             }
 
-            // Real child execution
-            bool done = backend->run_tick(pid);
+            if (cur_seg && cur_seg->type == SegType::RUN) {
+                int pid = cur_seg->pid;
+                size_t it = pid_to_idx[pid];
+                int os_pid = result.processes[it].os_pid;
 
-            if (done) {
-                // Child finished burst and exited
-                WorkerStats ws = backend->stats(pid);
-                result.processes[it].cpu_ms     = ws.cpu_ms;
-                result.processes[it].max_rss_kb = ws.max_rss_kb;
+                // DISPATCH event on first tick of segment
+                if (t == cur_seg->t_start) {
+                    if (sink) {
+                        LiveEvent ev;
+                        ev.type        = LiveEventType::DISPATCH;
+                        ev.t           = t;
+                        ev.pid         = pid;
+                        ev.os_pid      = os_pid;
+                        ev.ready_queue = find_ready_queue(t, EvType::DISPATCH, pid);
+                        sink->on_event(ev);
+                    }
+                }
 
+                // RUN event for this tick
+                int cur_tick = ++proc_ticks[pid];
                 if (sink) {
                     LiveEvent ev;
-                    ev.type        = LiveEventType::EXIT;
-                    ev.t           = t + 1;
-                    ev.pid         = pid;
-                    ev.os_pid      = os_pid;
-                    ev.cpu_ms      = ws.cpu_ms;
-                    ev.max_rss_kb  = ws.max_rss_kb;
-                    ev.exit_status = ws.exit_status;
+                    ev.type         = LiveEventType::RUN;
+                    ev.t            = t;
+                    ev.pid          = pid;
+                    ev.os_pid       = os_pid;
+                    ev.tick_current = cur_tick;
+                    ev.tick_total   = result.processes[it].burst;
                     sink->on_event(ev);
                 }
-            } else if (t + 1 == cur_seg->t_end) {
-                // Segment ended but process has remaining burst -> PREEMPT
-                std::string reason = (cfg.algo == Algo::RR) ? "quantum expired" : "preempted";
-                if (sink) {
-                    LiveEvent ev;
-                    ev.type        = LiveEventType::PREEMPT;
-                    ev.t           = t + 1;
-                    ev.pid         = pid;
-                    ev.os_pid      = os_pid;
-                    ev.reason      = reason;
-                    ev.ready_queue = find_ready_queue(t + 1, EvType::PREEMPT, pid);
-                    sink->on_event(ev);
+
+                // Real child execution
+                bool done = backend->run_tick(pid);
+
+                if (done) {
+                    // Child finished burst and exited
+                    WorkerStats ws = backend->stats(pid);
+                    result.processes[it].cpu_ms     = ws.cpu_ms;
+                    result.processes[it].max_rss_kb = ws.max_rss_kb;
+
+                    if (sink) {
+                        LiveEvent ev;
+                        ev.type        = LiveEventType::EXIT;
+                        ev.t           = t + 1;
+                        ev.pid         = pid;
+                        ev.os_pid      = os_pid;
+                        ev.cpu_ms      = ws.cpu_ms;
+                        ev.max_rss_kb  = ws.max_rss_kb;
+                        ev.exit_status = ws.exit_status;
+                        sink->on_event(ev);
+                    }
+                } else if (t + 1 == cur_seg->t_end) {
+                    // Segment ended but process has remaining burst -> PREEMPT
+                    std::string reason = (cfg.algo == Algo::RR) ? "quantum expired" : "preempted";
+                    if (sink) {
+                        LiveEvent ev;
+                        ev.type        = LiveEventType::PREEMPT;
+                        ev.t           = t + 1;
+                        ev.pid         = pid;
+                        ev.os_pid      = os_pid;
+                        ev.reason      = reason;
+                        ev.ready_queue = find_ready_queue(t + 1, EvType::PREEMPT, pid);
+                        sink->on_event(ev);
+                    }
                 }
+            }
+
+            // C. Pace for visualization if requested
+            if (live.tick_ms > 0) {
+                ::usleep((useconds_t)(live.tick_ms * 1000));
             }
         }
 
-        // C. Pace for visualization if requested
-        if (live.tick_ms > 0) {
-            ::usleep((useconds_t)(live.tick_ms * 1000));
-        }
+        // 6. Cleanup
+        backend->abort_all();
+        emit_cleanup(result.total_time);
+
+        return result;
+    } catch (...) {
+        backend->abort_all();
+        emit_cleanup(current_t);
+        throw;
     }
-
-    // 6. Cleanup
-    backend->abort_all();
-    emit_cleanup(result.total_time);
-
-    return result;
 
 #else
     (void)live;
