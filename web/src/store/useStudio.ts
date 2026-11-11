@@ -317,8 +317,8 @@ export const useStudio = create<StudioStore>((set, get) => {
 
         if (signal.aborted) return
 
-        // Stream ended — fetch the full trace JSON from /api/run for Gantt/metrics
-        const result = await runLive(req, signal)
+        // Stream ended — fetch the full trace JSON instantly (tickMs=0) for Gantt/metrics
+        const result = await runLive({ ...req, tickMs: 0 }, signal)
         if (signal.aborted) return
 
         const total = totalTime(result.trace)

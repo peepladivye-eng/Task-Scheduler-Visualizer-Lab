@@ -1,4 +1,4 @@
-﻿import React from 'react'
+import React from 'react'
 import { useStudio, useDerived } from '../store/useStudio'
 import { color } from '../design/tokens'
 import { pidColor } from '../design/pidColor'
@@ -131,11 +131,11 @@ export default function ProcessTable() {
                   </span>
                 </td>
                 <td style={{ ...TD_STYLE, ...MONO }}>{remaining}</td>
-                <td style={{ ...TD_STYLE, ...MONO }}>{showStart ? proc.start : 'ΓÇö'}</td>
-                <td style={{ ...TD_STYLE, ...MONO }}>{showComplete ? proc.completion : 'ΓÇö'}</td>
-                <td style={{ ...TD_STYLE, ...MONO }}>{showComplete ? proc.waiting : 'ΓÇö'}</td>
-                <td style={{ ...TD_STYLE, ...MONO }}>{showComplete ? proc.turnaround : 'ΓÇö'}</td>
-                <td style={{ ...TD_STYLE, ...MONO }}>{showComplete ? proc.response : 'ΓÇö'}</td>
+                <td style={{ ...TD_STYLE, ...MONO }}>{showStart ? proc.start : '—'}</td>
+                <td style={{ ...TD_STYLE, ...MONO }}>{showComplete ? proc.completion : '—'}</td>
+                <td style={{ ...TD_STYLE, ...MONO }}>{showComplete ? proc.waiting : '—'}</td>
+                <td style={{ ...TD_STYLE, ...MONO }}>{showComplete ? proc.turnaround : '—'}</td>
+                <td style={{ ...TD_STYLE, ...MONO }}>{showComplete ? proc.response : '—'}</td>
               </tr>
             )
           })}
