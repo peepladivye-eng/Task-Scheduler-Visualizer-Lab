@@ -1,9 +1,9 @@
 'use strict';
 /**
  * tools/run-tests.js
- * Usage: node tools/run-tests.js [--engine <path>] [--mode simulate|live] [--only <fixture>]
+ * Usage: node tools/run-tests.js [--engine <path>] [--mode simulate|live] [--ipc signal|pipe] [--only <fixture>]
  *
- * Defaults: --engine bin/scheduler_cpp  --mode simulate
+ * Defaults: --engine bin/scheduler_cpp  --mode simulate  --ipc signal
  */
 const fs   = require('fs');
 const path = require('path');
@@ -17,14 +17,16 @@ const INVALID_DIR  = path.join(ROOT, 'fixtures-invalid');
 const args = process.argv.slice(2);
 let enginePath  = path.join(ROOT, 'bin', 'scheduler_cpp');
 let mode        = 'simulate';
+let ipc         = 'signal';
 let onlyFixture = null;
 
 for (let i = 0; i < args.length; i++) {
     if      (args[i] === '--engine' && args[i+1]) { enginePath  = path.resolve(ROOT, args[++i]); }
     else if (args[i] === '--mode'   && args[i+1]) { mode        = args[++i]; }
+    else if (args[i] === '--ipc'    && args[i+1]) { ipc         = args[++i]; }
     else if (args[i] === '--only'   && args[i+1]) { onlyFixture = args[++i]; }
     else if (args[i] === '--help') {
-        console.log('Usage: node tools/run-tests.js [--engine PATH] [--mode simulate|live] [--only FIXTURE]');
+        console.log('Usage: node tools/run-tests.js [--engine PATH] [--mode simulate|live] [--ipc signal|pipe] [--only FIXTURE]');
         process.exit(0);
     } else {
         console.error('Unknown argument: ' + args[i]);
@@ -40,6 +42,10 @@ if (mode !== 'simulate' && mode !== 'live') {
     console.error('--mode must be simulate or live, got: ' + mode);
     process.exit(1);
 }
+if (ipc !== 'signal' && ipc !== 'pipe') {
+    console.error('--ipc must be signal or pipe, got: ' + ipc);
+    process.exit(1);
+}
 
 // ── Counters ─────────────────────────────────────────────────────────────────
 let passed = 0;
@@ -50,9 +56,9 @@ function fail(label, reason) { console.log('FAIL  ' + label + ' — ' + reason);
 
 // ── Run engine ────────────────────────────────────────────────────────────────
 function runEngine(extraArgs) {
-    // Only pass --mode when the binary is scheduler_cpp
+    // Only pass --mode and --ipc when the binary is scheduler_cpp
     const isCpp = path.basename(enginePath).startsWith('scheduler_cpp');
-    const allArgs = isCpp ? ['--mode', mode, ...extraArgs] : [...extraArgs];
+    const allArgs = isCpp ? ['--mode', mode, '--ipc', ipc, ...extraArgs] : [...extraArgs];
     const r = spawnSync(enginePath, allArgs, { encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
     return { exitCode: r.status, stdout: r.stdout || '', stderr: r.stderr || '' };
 }
@@ -189,7 +195,7 @@ function runCompareTest() {
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-const header = 'engine=' + path.basename(enginePath) + '  mode=' + mode;
+const header = 'engine=' + path.basename(enginePath) + '  mode=' + mode + '  ipc=' + ipc;
 console.log(header);
 console.log('-'.repeat(header.length));
 

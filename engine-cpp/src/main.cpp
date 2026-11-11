@@ -41,6 +41,7 @@ int main(int argc, char* argv[]) {
     const char* input_file = nullptr;
     const char* out_file   = nullptr;
     const char* mode_str   = "simulate";   // "simulate" or "live"
+    const char* ipc_str    = "signal";     // "signal" or "pipe"
     int         quantum    = -1;
     int         cs_cost    = 0;
     bool        do_compare = false;
@@ -53,8 +54,15 @@ int main(int argc, char* argv[]) {
         else if (std::strcmp(arg, "--context-switch") == 0) { if (++i >= argc) die("--context-switch needs value"); cs_cost    = std::atoi(argv[i]); }
         else if (std::strcmp(arg, "--out")            == 0) { if (++i >= argc) die("--out needs value");            out_file   = argv[i]; }
         else if (std::strcmp(arg, "--mode")           == 0) { if (++i >= argc) die("--mode needs value");           mode_str   = argv[i]; }
+        else if (std::strcmp(arg, "--ipc")            == 0) { if (++i >= argc) die("--ipc needs value");            ipc_str    = argv[i]; }
         else if (std::strcmp(arg, "--compare")        == 0) { do_compare = true; }
         else { std::string msg = "unknown flag: " + std::string(arg); die(msg.c_str()); }
+    }
+
+    // Validate --ipc flag (strict parsing)
+    if (std::strcmp(ipc_str, "signal") != 0 && std::strcmp(ipc_str, "pipe") != 0) {
+        std::string msg = "invalid --ipc value: " + std::string(ipc_str) + " (must be signal or pipe)";
+        die(msg.c_str());
     }
 
     if (!input_file) die("--input is required");
